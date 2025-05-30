@@ -13,7 +13,7 @@ services:
   build:
       context: .
       dockerfile: Dockerfile
-  restart: unless-stopped
+  env_file: ./.env
   networks:
    - clicker
 
@@ -22,7 +22,7 @@ services:
   build:
    context: .
    dockerfile: Dockerfile
-  restart: unless-stopped
+  env_file: ./.env
   networks:
    - clicker
 
@@ -31,7 +31,7 @@ services:
   build:
    context: .
    dockerfile: Dockerfile
-  restart: unless-stopped
+  env_file: ./.env
   networks:
    - clicker
 
@@ -40,7 +40,7 @@ services:
   build:
    context: .
    dockerfile: Dockerfile
-  restart: unless-stopped
+  env_file: ./.env
   networks:
    - clicker
 
