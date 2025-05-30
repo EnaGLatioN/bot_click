@@ -9,14 +9,17 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 
 AUTH_URL = config("AUTH_URL", cast=str)
-AUTH_PAYLOAD = config("AUTH_PAYLOAD", cast=dict)
+AUTH_PAYLOAD = {
+    "email": config("MAIL", cast=str),
+    "password": config("PASSWORD", cast=str)
+}
 
 API_URL = config("API_URL", cast=str)
 ORDER_URL = config("ORDER_URL", cast=str)
 
 RATES_URL = config("RATES_URL", cast=str)
 
-RATES = config("RATES", cast=set)
+RATES = {"bybit", "", "[RUB] SBERBANK", "ByBit Tinkoff ", "Rapira", "Rapira minus ", "rapira"}
 
 MONEY_FILTER_OT_DO = config("MONEY_FILTER_OT_DO", cast=str)
 MONEY_FILTER_OT = config("MONEY_FILTER_OT", cast=str)
@@ -80,6 +83,7 @@ def take_orders(api_url, headers, curse):
 
 def take_rates(rates_url, headers):
     curse = {}
+
     try:
         response = requests.get(rates_url, headers=headers)
         response.raise_for_status()

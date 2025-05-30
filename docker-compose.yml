@@ -1,0 +1,48 @@
+services:
+ clicker1:
+  container_name: clicker1
+  build:
+      context: .
+      dockerfile: Dockerfile
+  env_file: ./.env
+  networks:
+   - clicker
+
+ clicker2:
+  container_name: clicker2
+  build:
+      context: .
+      dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+   - clicker
+
+ clicker3:
+  container_name: clicker3
+  build:
+   context: .
+   dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+   - clicker
+
+ clicker4:
+  container_name: clicker4
+  build:
+   context: .
+   dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+   - clicker
+
+ clicker5:
+  container_name: clicker5
+  build:
+   context: .
+   dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+   - clicker
+
+networks:
+  clicker:
