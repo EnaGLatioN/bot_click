@@ -7,5 +7,4 @@ RUN pip install poetry==2.1.1
 #RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="/root/.local/bin:$PATH"
 RUN poetry install
-RUN chmod +x ./entrypoint.sh
-CMD [ "./entrypoint.sh" ]
+CMD ["tail", "-f", "/dev/null"]
