@@ -1,38 +1,35 @@
-import requests
-import time
-import logging
 import base64
-import json
-import re
+from decouple import config
+import logging
+import requests
 import urllib.parse
-from datetime import datetime
+
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-AUTH_URL = "https://gfhbgfbtre.com/api/auth/login"
-AUTH_PAYLOAD = {
-    "email": "skotradde@gmail.com",
-    "password": "jCoQ@#WcnD7oWHGj"
-}
 
-API_URL = "https://gfhbgfbtre.com/api/users/me"
-ORDER_URL = "https://gfhbgfbtre.com/api/payout-orders/trader/active?page=1&take=5&countAs=none"
+AUTH_URL = config("AUTH_URL", cast=str)
+AUTH_PAYLOAD = config("AUTH_PAYLOAD", cast=dict)
 
-RATES_URL = "https://gfhbgfbtre.com/api/currency-exchange/rates"
-RATES = {"bybit", "", "[RUB] SBERBANK", "ByBit Tinkoff ", "Rapira", "Rapira minus ", "rapira"}
+API_URL = config("API_URL", cast=str)
+ORDER_URL = config("ORDER_URL", cast=str)
 
-MONEY_FILTER_OT_DO = "https://gfhbgfbtre.com/api/payout-orders/trader/active?filters={}&page=1&take=5&countAs=none"
-MONEY_FILTER_OT = "https://gfhbgfbtre.com/api/payout-orders/trader/active?filters={}&page=1&take=5&countAs=none"
-MONEY_FILTER_NO = "https://gfhbgfbtre.com/api/payout-orders/trader/active?page=1&take=5&countAs=none"
-ACCEPT_URL = "https://gfhbgfbtre.com/api/payout-orders/trader/{}/accept"
+RATES_URL = config("RATES_URL", cast=str)
+
+RATES = config("RATES", cast=set)
+
+MONEY_FILTER_OT_DO = config("MONEY_FILTER_OT_DO", cast=str)
+MONEY_FILTER_OT = config("MONEY_FILTER_OT", cast=str)
+MONEY_FILTER_NO = config("MONEY_FILTER_NO", cast=str)
+
+ACCEPT_URL = config("ACCEPT_URL", cast=str)
 
 
 def authenticate_and_get_token(auth_url, payload):
     try:
         response = requests.post(auth_url, json=payload)
         response.raise_for_status()
-        token = response.json().get('accessToken')
-        return token
+        return response.json().get('accessToken')
     except requests.exceptions.HTTPError as http_err:
         logging.info(f"HTTP error occurred during authentication: {http_err}")
         logging.info(f"Response content: {response.text}")
@@ -67,9 +64,9 @@ def take_tocken():
 
 def take_orders(api_url, headers, curse):
     try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
         while True:
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status()
             for res in response.json().get("items", None):
                 if res.get("currencyRate") < curse:
                     buy(res.get("id"), headers)
@@ -108,14 +105,12 @@ def create_encoded_json(filter_int):
         json_string = '{"minAmount":%s}' % (
             f"{min_amount}" if min_amount is not None else "null",
         )
-        url_encoded = urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8'))
-        return MONEY_FILTER_OT.format(url_encoded)
+        return MONEY_FILTER_OT.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
     json_string = '{"minAmount":%s,"maxAmount":%s}' % (
         f"{min_amount}" if min_amount is not None else "null",
         f"{max_amount}" if max_amount is not None else "null"
     )
-    url_encoded = urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8'))
-    return MONEY_FILTER_OT_DO.format(url_encoded)
+    return MONEY_FILTER_OT_DO.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
 
 
 
@@ -131,6 +126,7 @@ def get_user_choice(rates):
                 logging.info("Неверный номер. Пожалуйста, выберите номер из списка.")
         except ValueError:
             logging.error("Пожалуйста, введите корректный номер.")
+
 
 def get_filters():
     while True:
@@ -158,8 +154,7 @@ def buy(id, headers):
     try:
         response = requests.post(ACCEPT_URL.format(id), headers=headers)
         response.raise_for_status()
-        accept = response.json()
-        if accept.get("status", None) == 'trader_payment':
+        if response.json().get("status", None) == 'trader_payment':
             logging.info(f"Куплен лот с айди:{id}")
         logging.info(f"Купить лот с айди:{id}  не удалось")
     except requests.exceptions.HTTPError as http_err:
@@ -174,15 +169,14 @@ def main():
     headers = take_tocken()
     if headers:
         rates = take_rates(RATES_URL, headers)
-        user_choice = get_user_choice(rates)
-        selected_rate = rates[user_choice]
-        selected_filter = get_filters()
+        selected_rate = rates[get_user_choice(rates)]
         logging.info(f"Вы выбрали курс: {selected_rate}")
-        filter_int = fix_filter(selected_filter)
+        filter_int = fix_filter(get_filters())
         logging.info(f"Вы выбрали фильтр от: {filter_int}")
         take_orders(create_encoded_json(filter_int), headers, float(selected_rate))
     else:
         logging.error(f"No token: {headers}")
+
 
 if __name__ == "__main__":
     main()
