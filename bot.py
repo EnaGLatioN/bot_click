@@ -183,12 +183,13 @@ def start_bot(call: CallbackQuery):
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
-        active_process = subprocess.Popen(
-            ["poetry", "run", "python", "bot_click.py", "--rate", str(record.get("disperce")), "--min_summ", str(record.get("min_summ"))],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+        if active_process is None:
+            active_process = subprocess.Popen(
+                ["poetry", "run", "python", "bot_click.py", "--rate", str(record.get("disperce")), "--min_summ", str(record.get("min_summ"))],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
         logging.info("Процесс запущен.")
     except Exception as e:
         logging.error(f"Ошибка при запуске команды: {e}")
@@ -283,4 +284,8 @@ def take_min_amount(message):
     )
 
 
-bot.polling(none_stop=True)
+while True:
+    try:
+        bot.polling(none_stop=True)
+    except:
+        continue
