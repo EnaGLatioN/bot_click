@@ -6,16 +6,7 @@ from telebot.types import ReplyKeyboardRemove, CallbackQuery
 from decouple import config
 
 from bot_click import (
-    AUTH_URL,
-    AUTH_PAYLOAD,
-    API_URL,
-    ORDER_URL,
     RATES_URL,
-    RATES,
-    MONEY_FILTER_OT_DO,
-    MONEY_FILTER_OT,
-    MONEY_FILTER_NO,
-    ACCEPT_URL,
     take_rates,
     take_tocken,
 )
@@ -65,13 +56,15 @@ def start_bot(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("take-rates"))
 def callback_inline(call: CallbackQuery):
     rate = call.data.replace("take-rates-", "")
-    if not get_active_records:
+    if not get_active_records(connection=create_connection()):
         insert_positions(
             connection=create_connection(),
             min_summ=0,
             rate=rate,
             disperce=0,
         )
+    else:
+        update_positions(connection=create_connection(), rate=rate)
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -164,7 +157,7 @@ def callback_inline(call: CallbackQuery):
         logging.error("В базе больше одной активной записи.")
     update_positions(
         connection=create_connection(),
-        disperce=dispersion,
+        disperce=80.03 + (80.03 * dispersion / 100),
     )
     bot.edit_message_text(
         chat_id=call.message.chat.id,
@@ -185,7 +178,7 @@ def start_bot(call: CallbackQuery):
         else:
             logging.error("В базе больше одной активной записи.")
         active_process = subprocess.Popen(
-            ["python", "bot_click.py", "--rate", str(record.get("rate")), "--min_summ", str(record.get("min_summ"))],
+            ["poetry", "run", "python", "bot_click.py", "--rate", str(record.get("disperce")), "--min_summ", str(record.get("min_summ"))],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True

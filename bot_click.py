@@ -6,8 +6,15 @@ import requests
 import urllib.parse
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
+log_file = "bot.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
 
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
@@ -103,9 +110,16 @@ def take_rates(rates_url, headers):
 
 
 def create_encoded_json(filter_int):
+    logging.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    logging.info(filter_int)
     if filter_int is None:
         return MONEY_FILTER_NO
-    min_amount, max_amount = filter_int
+    try:
+        min_amount, max_amount = filter_int
+    except Exception as e:
+        logging.info(f"Сломан фильр -- {filter_int} -- {e}")
+        max_amount = None
+        min_amount = filter_int
     if min_amount and max_amount is None:
         json_string = '{"minAmount":%s}' % (
             f"{min_amount}" if min_amount is not None else "null",
@@ -159,7 +173,7 @@ def buy(id, headers):
     try:
         response = requests.post(ACCEPT_URL.format(id), headers=headers)
         response.raise_for_status()
-        if response.json().get("status", None) == 'trader_payment':
+        if response.json().get("status", None) != 'trader_payment':
             logging.info(f"Куплен лот с айди:{id}")
         logging.info(f"Купить лот с айди:{id}  не удалось")
     except requests.exceptions.HTTPError as http_err:
@@ -171,6 +185,8 @@ def buy(id, headers):
 
 
 def main(args):
+    logging.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    logging.info(args)
     headers = take_tocken()
     if headers:
         take_orders(create_encoded_json(args.min_summ), headers, float(args.rate))
@@ -180,6 +196,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Description of your script.")
-    parser.add_argument("--rate", type=int, help="Введите значение курса.")
+    parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
     main(parser.parse_args())
