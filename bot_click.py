@@ -1,4 +1,5 @@
 import base64
+import argparse
 from decouple import config
 import logging
 import requests
@@ -91,7 +92,7 @@ def take_rates(rates_url, headers):
         for res in response.json():
             if res.get("source", None) in RATES and res.get("name", None) in RATES:
                 count += 1
-                curse[count] = f"{res.get("price", None)}"
+                curse[count] = f"{res.get('price', None)}"
         return curse
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP ошибка возникла: {http_err}")
@@ -169,18 +170,16 @@ def buy(id, headers):
         return {"error": str(err)}
 
 
-def main():
+def main(args):
     headers = take_tocken()
     if headers:
-        rates = take_rates(RATES_URL, headers)
-        selected_rate = rates[get_user_choice(rates)]
-        logging.info(f"Вы выбрали курс: {selected_rate}")
-        filter_int = fix_filter(get_filters())
-        logging.info(f"Вы выбрали фильтр от: {filter_int}")
-        take_orders(create_encoded_json(filter_int), headers, float(selected_rate))
+        take_orders(create_encoded_json(args.min_summ), headers, float(args.rate))
     else:
         logging.error(f"No token: {headers}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Description of your script.")
+    parser.add_argument("--rate", type=int, help="Введите значение курса.")
+    parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
+    main(parser.parse_args())
