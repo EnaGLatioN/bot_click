@@ -104,10 +104,12 @@ def callback_inline(call: CallbackQuery):
                 callback_data=f"dispersion-ready-{dispersion}"
             ),
         )
+    curse = get_active_records(connection=create_connection())[0].get("rate", None)
+
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
-        text=f"Отклонение от курса: {dispersion}% (max: {80.03 + (80.03 * dispersion / 100)})",
+        text=f"Отклонение от курса: {dispersion}% (max: {curse + (curse * dispersion / 100)})",
         reply_markup=keyboard
     )
 
@@ -131,10 +133,12 @@ def callback_inline(call: CallbackQuery):
             callback_data=f"dispersion-ready-{dispersion}"
         ),
     )
+    curse = get_active_records(connection=create_connection())[0].get("rate", None)
+
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
-        text=f"Отклонение от курса: {dispersion}% (max: {80.03 + (80.03 * dispersion / 100)})",
+        text=f"Отклонение от курса: {dispersion}% (max: {curse + (curse * dispersion / 100)})",
         reply_markup=keyboard
     )
 
@@ -155,14 +159,16 @@ def callback_inline(call: CallbackQuery):
         record = get_active_records(create_connection())[0]
     else:
         logging.error("В базе больше одной активной записи.")
+    curse = get_active_records(connection=create_connection())[0].get("rate", None)
+
     update_positions(
         connection=create_connection(),
-        disperce=80.03 + (80.03 * dispersion / 100),
+        disperce=curse + (curse * dispersion / 100),
     )
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
-        text=f"Курс: {record.get("rate", None)}\nМин. сумма: {record.get("min_summ", None)}\nОтклонение от курса: {dispersion}% (max: {80.03 + (80.03 * dispersion / 100)})",
+        text=f"Курс: {record.get("rate", None)}\nМин. сумма: {record.get("min_summ", None)}\nОтклонение от курса: {dispersion}% (max: {curse + (curse * dispersion / 100)})",
         reply_markup=keyboard
     )
 
@@ -247,6 +253,7 @@ def take_min_amount(message):
             connection=create_connection(),
             min_summ=int(message.json.get("text")),
         )
+        curse = get_active_records(connection=create_connection())[0].get("rate", None)
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(
@@ -265,7 +272,7 @@ def take_min_amount(message):
         )
         bot.send_message(
             chat_id=message.from_user.id,
-            text=f"Отклонение от курса: {0.1}% (max: {80.03 + (80.03 * 0.1 / 100)})",
+            text=f"Отклонение от курса: {0.1}% (max: {curse + (curse * 0.1 / 100)})",
             reply_markup=keyboard
         )
         return
