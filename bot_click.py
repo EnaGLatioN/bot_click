@@ -173,7 +173,7 @@ def buy(id, headers):
     try:
         response = requests.post(ACCEPT_URL.format(id), headers=headers)
         response.raise_for_status()
-        if response.json().get("status", None) != 'trader_payment':
+        if response.json().get("status", None) == 'trader_payment':
             logging.info(f"Куплен лот с айди:{id}")
         logging.info(f"Купить лот с айди:{id}  не удалось")
     except requests.exceptions.HTTPError as http_err:
