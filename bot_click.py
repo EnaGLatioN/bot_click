@@ -93,7 +93,6 @@ def take_orders(api_url, headers, curse):
 
 def take_rates(rates_url, headers):
     curse = {}
-
     try:
         response = requests.get(rates_url, headers=headers)
         response.raise_for_status()
@@ -177,7 +176,8 @@ def buy(id, headers):
         response.raise_for_status()
         if response.json().get("status", None) == 'trader_payment':
             logging.info(f"Куплен лот с айди:{id}")
-        logging.info(f"Купить лот с айди:{id}  не удалось")
+        else:
+            logging.info(f"Не купили лот с айди:{id}")
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP ошибка возникла: {http_err}")
         return {"error": str(http_err)}
