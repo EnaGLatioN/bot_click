@@ -80,7 +80,7 @@ def take_orders(api_url, headers, curse):
             logging.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json().get("items", None)}")
             response.raise_for_status()
             for res in response.json().get("items", None):
-                if res.get("currencyRate") < curse:
+                if res.get("currencyRate") < curse and res.get("status") == "requisites":
                     buy(res.get("id"), headers)
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP ошибка возникла: {http_err}")
