@@ -6,15 +6,18 @@ import requests
 import urllib.parse
 
 
-log_file = "bot.log"
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger("my_bot")
+logger.setLevel(logging.DEBUG)
+
+# Создаём обработчик для записи логов в файл
+file_handler = logging.FileHandler("bot.log")
+file_handler.setLevel(logging.DEBUG)
+file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_logger_format)
+
+# Добавляем обработчик к логгеру
+logger.addHandler(file_handler)
+
 
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
@@ -42,10 +45,10 @@ def authenticate_and_get_token(auth_url, payload):
         response.raise_for_status()
         return response.json().get('accessToken')
     except requests.exceptions.HTTPError as http_err:
-        logging.info(f"HTTP error occurred during authentication: {http_err}")
-        logging.info(f"Response content: {response.text}")
+        logger.info(f"HTTP error occurred during authentication: {http_err}")
+        logger.info(f"Response content: {response.text}")
     except Exception as err:
-        logging.info(f"Other error occurred during authentication: {err}")
+        logger.info(f"Other error occurred during authentication: {err}")
     return None
 
 
@@ -55,9 +58,9 @@ def send_request(api_url, headers):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as http_err:
-        logging.info(f"HTTP error occurred: {http_err}")
+        logger.info(f"HTTP error occurred: {http_err}")
     except Exception as err:
-        logging.info(f"Other error occurred: {err}")
+        logger.info(f"Other error occurred: {err}")
     return None
 
 
@@ -69,7 +72,7 @@ def take_tocken():
     if token:
         return headers
     else:
-        logging.info("Failed to authenticate.")
+        logger.info("Failed to authenticate.")
         return None
 
 
@@ -79,19 +82,19 @@ def take_orders(api_url, headers, curse):
         while True:
             try:
                 response = requests.get(api_url, headers=headers)
-                logging.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
+                logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
                 response.raise_for_status()
                 for res in response.json().get("items", None):
                     if (res.get("currencyRate") < curse) and (res.get("status") != "trader_payment"):
                         buy(res.get("id"), headers)
             except Exception as e:
-                logging.info(f"Что то не так: {e}")
+                logger.info(f"Что то не так: {e}")
                 continue
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP ошибка возникла: {http_err}")
+        logger.error(f"HTTP ошибка возникла: {http_err}")
         return {"error": str(http_err)}
     except Exception as err:
-        logging.error(f"Произошла другая ошибка: {err}")
+        logger.error(f"Произошла другая ошибка: {err}")
         return {"error": str(err)}
 
 
@@ -107,22 +110,22 @@ def take_rates(rates_url, headers):
                 curse[count] = f"{res.get('price', None)}"
         return curse
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP ошибка возникла: {http_err}")
+        logger.error(f"HTTP ошибка возникла: {http_err}")
         return {"error": str(http_err)}
     except Exception as err:
-        logging.error(f"Произошла другая ошибка: {err}")
+        logger.error(f"Произошла другая ошибка: {err}")
         return {"error": str(err)}
 
 
 def create_encoded_json(filter_int):
-    logging.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    logging.info(filter_int)
+    logger.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    logger.info(filter_int)
     if filter_int is None:
         return MONEY_FILTER_NO
     try:
         min_amount, max_amount = filter_int
     except Exception as e:
-        logging.info(f"Сломан фильр -- {filter_int} -- {e}")
+        logger.info(f"Сломан фильр -- {filter_int} -- {e}")
         max_amount = None
         min_amount = filter_int
     if min_amount and max_amount is None:
@@ -140,16 +143,16 @@ def create_encoded_json(filter_int):
 
 
 def get_user_choice(rates):
-    logging.info(f"Выберите нужный курс: {rates}")
+    logger.info(f"Выберите нужный курс: {rates}")
     while True:
         try:
             choice = int(input("Введите номер курса: "))
             if choice in rates:
                 return choice
             else:
-                logging.info("Неверный номер. Пожалуйста, выберите номер из списка.")
+                logger.info("Неверный номер. Пожалуйста, выберите номер из списка.")
         except ValueError:
-            logging.error("Пожалуйста, введите корректный номер.")
+            logger.error("Пожалуйста, введите корректный номер.")
 
 
 def get_filters():
@@ -160,7 +163,7 @@ def get_filters():
                 return choice
             return None
         except ValueError:
-            logging.error("Пожалуйста, введите корректный номер.")
+            logger.error("Пожалуйста, введите корректный номер.")
 
 
 def fix_filter(selected_filter):
@@ -179,25 +182,25 @@ def buy(id, headers):
         response = requests.post(ACCEPT_URL.format(id), headers=headers)
         response.raise_for_status()
         if response.json().get("status", None) == 'trader_payment':
-            logging.info(f"Куплен лот с айди:{id}")
+            logger.info(f"Куплен лот с айди:{id}")
         else:
-            logging.info(f"Не купили лот с айди:{id}")
+            logger.info(f"Не купили лот с айди:{id}")
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP ошибка возникла: {http_err}")
+        logger.error(f"HTTP ошибка возникла: {http_err}")
         return {"error": str(http_err)}
     except Exception as err:
-        logging.error(f"Произошла другая ошибка: {err}")
+        logger.error(f"Произошла другая ошибка: {err}")
         return {"error": str(err)}
 
 
 def main(args):
-    logging.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    logging.info(args)
+    logger.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    logger.info(args)
     headers = take_tocken()
     if headers:
         take_orders(create_encoded_json(args.min_summ), headers, float(args.rate))
     else:
-        logging.error(f"No token: {headers}")
+        logger.error(f"No token: {headers}")
 
 
 if __name__ == "__main__":

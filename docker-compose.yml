@@ -9,6 +9,8 @@ services:
   env_file: ./.env
   networks:
    - clicker
+  volumes:
+   - ../log/bot.log:/application/bot.log
 
  clicker-db:
   image: postgres:13-alpine
