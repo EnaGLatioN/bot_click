@@ -77,6 +77,7 @@ def take_orders(api_url, headers, curse):
     try:
         while True:
             response = requests.get(api_url, headers=headers)
+            logging.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json().get("items", None)}")
             response.raise_for_status()
             for res in response.json().get("items", None):
                 if res.get("currencyRate") < curse:
