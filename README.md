@@ -27,3 +27,5 @@ docker exec -it clicker1 poetry run python -m bot_click
 главное учесть номер кликера в примере первый всего их 5
 это что бы запустить бота
 
+logs
+docker exec -it clicker1 tail -f /application/bot.log
