@@ -83,9 +83,9 @@ def take_orders(api_url, headers, curse):
             try:
                 response = requests.get(api_url, headers=headers)
                 logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
-                response.raise_for_status()
+                #response.raise_for_status()
                 logger.info(f"проверка статуса : {response.status_code}")
-                if response.json().get('statusCode') == 401:
+                if response.status_code == 401:
                     logger.info(f"Получили новый токен: {response.json()}")
                     headers = take_tocken()
                 for res in response.json().get("items", None):
