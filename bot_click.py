@@ -84,6 +84,9 @@ def take_orders(api_url, headers, curse):
                 response = requests.get(api_url, headers=headers)
                 logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
                 response.raise_for_status()
+                if response.status_code == 401:
+                    logger.info(f"Получили новый токен: {response.json()}")
+                    headers = take_tocken()
                 for res in response.json().get("items", None):
                     if (res.get("currencyRate") < curse) and (res.get("status") != "trader_payment"):
                         buy(res.get("id"), headers)
