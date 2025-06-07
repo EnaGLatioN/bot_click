@@ -1,4 +1,6 @@
 import base64
+import asyncio
+import aiohttp
 import argparse
 from decouple import config
 import logging
@@ -9,13 +11,12 @@ import urllib.parse
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
 
-# Создаём обработчик для записи логов в файл
 file_handler = logging.FileHandler("bot.log")
 file_handler.setLevel(logging.DEBUG)
 file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_logger_format)
 
-# Добавляем обработчик к логгеру
+
 logger.addHandler(file_handler)
 
 
@@ -39,67 +40,47 @@ MONEY_FILTER_NO = config("MONEY_FILTER_NO", cast=str)
 ACCEPT_URL = config("ACCEPT_URL", cast=str)
 
 
-def authenticate_and_get_token(auth_url, payload):
-    try:
-        response = requests.post(auth_url, json=payload)
-        response.raise_for_status()
-        return response.json().get('accessToken')
-    except requests.exceptions.HTTPError as http_err:
-        logger.info(f"HTTP error occurred during authentication: {http_err}")
-        logger.info(f"Response content: {response.text}")
-    except Exception as err:
-        logger.info(f"Other error occurred during authentication: {err}")
+async def authenticate_and_get_token(auth_url, payload):
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.post(auth_url, json=payload) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return data.get('accessToken')
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP error during authentication: {e}")
     return None
 
 
-def send_request(api_url, headers):
+async def send_request(api_url, headers, session):
     try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.HTTPError as http_err:
-        logger.info(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        logger.info(f"Other error occurred: {err}")
+        async with session.get(api_url, headers=headers) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientError as e:
+        logger.error(f"HTTP error occurred: {e}")
     return None
 
 
-def take_tocken():
-    token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
+async def take_tocken():
+    token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
     if token:
-        return headers
-    else:
-        logger.info("Failed to authenticate.")
-        return None
+        return {"Authorization": f"Bearer {token}"}
+    logger.error("Failed to authenticate.")
+    return None
 
 
-#"requisites"
-def take_orders(api_url, headers, curse):
-    try:
-        while True:
-            try:
-                response = requests.get(api_url, headers=headers)
-                logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
-                #response.raise_for_status()
-                logger.info(f"проверка статуса : {response.status_code}")
-                if response.status_code == 401:
-                    logger.info(f"Получили новый токен: {response.json()}")
-                    headers = take_tocken()
-                for res in response.json().get("items", None):
-                    if (res.get("currencyRate") < curse) and (res.get("status") != "trader_payment"):
-                        buy(res.get("id"), headers)
-            except Exception as e:
-                logger.info(f"Что то не так: {e}")
-                continue
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"HTTP ошибка возникла: {http_err}")
-        return {"error": str(http_err)}
-    except Exception as err:
-        logger.error(f"Произошла другая ошибка: {err}")
-        return {"error": str(err)}
+async def take_orders(api_url, headers, curse, session):
+    while True:
+        try:
+            response = await send_request(api_url, headers, session)
+            logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response}")
+            for res in response.get("items", []):
+                if res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment":
+                    await buy(res.get("id"), headers, session)
+        except Exception as e:
+            logger.error(f"Error while processing orders: {e}")
+            await asyncio.sleep(5)
 
 
 def take_rates(rates_url, headers):
@@ -121,7 +102,7 @@ def take_rates(rates_url, headers):
         return {"error": str(err)}
 
 
-def create_encoded_json(filter_int):
+async def create_encoded_json(filter_int):
     logger.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     logger.info(filter_int)
     if filter_int is None:
@@ -142,8 +123,6 @@ def create_encoded_json(filter_int):
         f"{max_amount}" if max_amount is not None else "null"
     )
     return MONEY_FILTER_OT_DO.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
-
-
 
 
 def get_user_choice(rates):
@@ -181,34 +160,34 @@ def fix_filter(selected_filter):
     return None
 
 
-def buy(id, headers):
+async def buy(id, headers, session):
     try:
-        response = requests.post(ACCEPT_URL.format(id), headers=headers)
-        response.raise_for_status()
-        if response.json().get("status", None) == 'trader_payment':
-            logger.info(f"Куплен лот с айди:{id}")
-        else:
-            logger.info(f"Не купили лот с айди:{id}")
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"HTTP ошибка возникла: {http_err}")
-        return {"error": str(http_err)}
-    except Exception as err:
-        logger.error(f"Произошла другая ошибка: {err}")
-        return {"error": str(err)}
+        async with session.post(ACCEPT_URL.format(id), headers=headers) as response:
+            response.raise_for_status()
+            result = await response.json()
+            if result.get("status", None) == 'trader_payment':
+                logger.info(f"Куплен лот с айди:{id}")
+            else:
+                logger.info(f"Не купили лот с айди:{id}")
+    except aiohttp.ClientError as e:
+        logger.error(f"HTTP error during purchase: {e}")
 
 
-def main(args):
-    logger.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+async def main(args):
+    logger.info("АРГУМЕНТЫ СТАРТА БОТА")
     logger.info(args)
-    headers = take_tocken()
-    if headers:
-        take_orders(create_encoded_json(args.min_summ), headers, float(args.rate))
-    else:
-        logger.error(f"No token: {headers}")
+    headers = await take_tocken()
+    if not headers:
+        logger.error("No token. Exiting.")
+        return
+    async with aiohttp.ClientSession() as session:
+        tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session) for _ in range(args.processes)]
+        await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
-    main(parser.parse_args())
+    parser.add_argument("--processes", type=int, help="Введите значение процессов.")
+    asyncio.run(main(parser.parse_args()))

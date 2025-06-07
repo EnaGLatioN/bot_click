@@ -10,13 +10,20 @@ from bot_click import (
     take_rates,
     take_tocken,
 )
-from db.init_db import insert_positions, create_connection, update_positions, get_active_records
+from db.init_db import (
+    insert_positions,
+    create_connection,
+    update_positions,
+    get_active_records,
+    insert_process,
+    update_processes,
+    get_active_processes
+)
 
 # TELE_TOCKEN = "8094728804:AAHdXxJZ00MUlCaZaRdiRIv35yYUWtWHkJI"
-print(take_rates(RATES_URL, take_tocken()))
 
 bot = telebot.TeleBot(config("TELE_TOCKEN", cast=str))
-active_process = None
+
 
 @bot.message_handler(commands=['start',])
 def send_welcome(message):
@@ -154,7 +161,6 @@ def callback_inline(call: CallbackQuery):
             callback_data=f"start-parse"
         ),
     )
-
     if len(get_active_records(create_connection())) == 1:
         record = get_active_records(create_connection())[0]
     else:
@@ -175,22 +181,32 @@ def callback_inline(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data == "start-parse")
 def start_bot(call: CallbackQuery):
-    global active_process
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
+    records_to_insert = []
     try:
         if len(get_active_records(create_connection())) == 1:
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
-        if active_process is None:
-            active_process = subprocess.Popen(
-                ["poetry", "run", "python", "bot_click.py", "--rate", str(record.get("disperce")), "--min_summ", str(record.get("min_summ"))],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-        logging.info("Процесс запущен.")
+        processes = get_active_processes(create_connection())
+        #TODO добавь тут процессы
+        active_process = subprocess.Popen(
+            ["poetry", "run", "python", "bot_click.py",
+             "--rate", str(record.get("disperce")),
+             "--min_summ", str(record.get("min_summ")),
+             "--processes", str(record.get("min_summ"))
+             ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        records_to_insert.append((
+            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))}",
+            active_process.pid
+        ))
+        insert_process(create_connection(), records_to_insert)
+        logging.info("Процессы запущен.")
     except Exception as e:
         logging.error(f"Ошибка при запуске команды: {e}")
     keyboard.row(
@@ -209,7 +225,6 @@ def start_bot(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data == "finish-parse")
 def start_bot(call: CallbackQuery):
-    global active_process
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.row(
         telebot.types.InlineKeyboardButton(
@@ -221,10 +236,10 @@ def start_bot(call: CallbackQuery):
             callback_data="goodbay"
         ),
     )
-    if active_process is not None:
-        logging.info("Остановка процесса.")
-        active_process.terminate()
-        active_process = None
+
+        # logging.info("Остановка процесса.")
+        # active_process.terminate()
+        # active_process = None
 
     update_positions(
         connection=create_connection(),

@@ -2,6 +2,7 @@ import logging
 
 from decouple import config
 import psycopg2
+from psycopg2.extras import execute_values
 
 
 logging.basicConfig(
@@ -36,13 +37,24 @@ def create_table(connection):
                 disperce FLOAT,
                 status BOOLEAN DEFAULT TRUE
             );
-        """)
+            CREATE TABLE IF NOT EXISTS processes (
+                id SERIAL PRIMARY KEY,
+                command TEXT NOT NULL,
+                pid INTEGER NOT NULL,
+                status BOOLEAN DEFAULT TRUE,
+                timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        """
+        )
         connection.commit()
-        logging.info("Таблица 'clicker' успешно создана.")
+        logging.info("Таблица clicker и processes успешно созданы.")
     except Exception as error:
-        logging.error(f"Ошибка при создании таблицы: {error}")
+        logging.error(f"Ошибка при создании таблиц: {error}")
     finally:
-        cursor.close()
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
 
 
 def insert_positions(connection, min_summ=None, rate=None, disperce=None, status=None):
@@ -57,7 +69,72 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, status
     except Exception as error:
         logging.error(f"Ошибка при вставке данных: {error}")
     finally:
-        cursor.close()
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
+
+
+def insert_process(connection, process_data):
+    try:
+        cursor = connection.cursor()
+        execute_values(
+            cursor,
+            """
+            INSERT INTO processes (command, pid) VALUES %s
+            """,
+            process_data
+        )
+        connection.commit()
+        logging.info(f"{len(process_data)} записей успешно добавлено.")
+    except Exception as error:
+        logging.error(f"Ошибка при вставке данных: {error}")
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
+
+
+def get_active_processes(connection):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM processes WHERE status = TRUE;")
+        columns = [column[0] for column in cursor.description]
+        records = [dict(zip(columns, record)) for record in cursor.fetchall()]
+        logging.info(f"Записи: {records}")
+        return records
+    except Exception as error:
+        logging.error(f"Ошибка при получении данных: {error}")
+        return []
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
+
+
+def update_processes(connection, status=None):
+    try:
+        cursor = connection.cursor()
+        if status is not None:
+            update_query = f"""
+                UPDATE processes 
+                SET status = FALSE 
+                WHERE status = TRUE;
+            """
+            cursor.execute(update_query)
+            connection.commit()
+            logging.info("Записи с статусом TRUE успешно обновлены.")
+        else:
+            logging.warning("Нет данных для обновления.")
+    except Exception as error:
+        logging.error(f"Ошибка при обновлении данных: {error}")
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
 
 
 def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None):
@@ -91,7 +168,10 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
     except Exception as error:
         logging.error(f"Ошибка при обновлении данных: {error}")
     finally:
-        cursor.close()
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
 
 
 def get_active_records(connection):
@@ -107,7 +187,10 @@ def get_active_records(connection):
         logging.error(f"Ошибка при получении данных: {error}")
         return []
     finally:
-        cursor.close()
+        if cursor is not None:
+            cursor.close()
+        if connection is not None:
+            connection.close()
 
 
 if __name__ == "__main__":
