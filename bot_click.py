@@ -82,7 +82,7 @@ async def take_orders(api_url, headers, curse, session, order_filter):
                 if res.get("status") == "trader_payment":
                     count += 1
                     logger.info(f"count count: {count}")
-                elif res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment" and count != order_filter:
+                elif res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment" and count <= order_filter:
                     await buy(res.get("id"), headers, session)
                     count += 1
         except Exception as e:
