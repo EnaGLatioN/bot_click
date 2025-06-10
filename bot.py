@@ -1,14 +1,16 @@
 import logging
 import subprocess
+import os
+import signal
 
 import telebot
 from telebot.types import ReplyKeyboardRemove, CallbackQuery
 from decouple import config
 
+from services import take_token
 from bot_click import (
     RATES_URL,
     take_rates,
-    take_tocken,
 )
 from db.init_db import (
     insert_positions,
@@ -43,7 +45,7 @@ def send_welcome(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "start-bot")
 def start_bot(call: CallbackQuery):
-    rates = take_rates(RATES_URL, take_tocken())
+    rates = take_rates(RATES_URL, take_token())
     keyboard = telebot.types.InlineKeyboardMarkup()
     for i in rates.values():
         keyboard.row(
@@ -157,7 +159,7 @@ def callback_inline(call: CallbackQuery):
     record = {}
     keyboard.row(
         telebot.types.InlineKeyboardButton(
-            "Запустить", 
+            "Далее выбор кол-ва заявок и процессов.",
             callback_data=f"start-parse"
         ),
     )
@@ -179,8 +181,104 @@ def callback_inline(call: CallbackQuery):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == "start-parse")
+@bot.callback_query_handler(func=lambda call: call.data == "ready-parce")
 def start_bot(call: CallbackQuery):
+    curse = 0
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(
+        telebot.types.InlineKeyboardButton(
+            "-",
+            callback_data=f"processes-minus-{1}"
+        ),
+        telebot.types.InlineKeyboardButton(
+            "+",
+            callback_data=f"processes-plus-{1}"
+        ),
+    ).row(
+        telebot.types.InlineKeyboardButton(
+            "Готово",
+            callback_data=f"processes-ready-{1}"
+        ),
+    )
+    bot.send_message(
+        chat_id=call.from_user.id,
+        text=f"Процессов будет запущено - {curse}",
+        reply_markup=keyboard
+    )
+    return
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("processes-minus"))
+def callback_inline(call: CallbackQuery):
+    dispersion = int(call.data.replace("processes-minus-", "")) - 1
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    if dispersion > 0:
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                "-",
+                callback_data=f"processes-minus-{dispersion}"
+            ),
+            telebot.types.InlineKeyboardButton(
+                "+",
+                callback_data=f"processes-plus-{dispersion}"
+            ),
+        ).row(
+            telebot.types.InlineKeyboardButton(
+                "Готово",
+                callback_data=f"processes-ready-{dispersion}"
+            ),
+        )
+    else:
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                "+",
+                callback_data=f"processes-plus-{dispersion}"
+            ),
+        ).row(
+            telebot.types.InlineKeyboardButton(
+                "Готово",
+                callback_data=f"processes-ready-{dispersion}"
+            ),
+        )
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"Процессов будет запущено - {dispersion}",
+        reply_markup=keyboard
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("processes-plus"))
+def callback_inline(call: CallbackQuery):
+    dispersion = int(call.data.replace("processes-plus-", "")) + 1
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(
+        telebot.types.InlineKeyboardButton(
+            "-",
+            callback_data=f"processes-minus-{dispersion}"
+        ),
+        telebot.types.InlineKeyboardButton(
+            "+",
+            callback_data=f"processes-plus-{dispersion}"
+        ),
+    ).row(
+        telebot.types.InlineKeyboardButton(
+            "Готово",
+            callback_data=f"processes-ready-{dispersion}"
+        ),
+    )
+
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"Процессов будет запущено - {dispersion}",
+        reply_markup=keyboard
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("processes-ready"))
+def start_bot(call: CallbackQuery):
+    processes = int(call.data.replace("processes-ready-", ""))
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
     records_to_insert = []
@@ -189,24 +287,35 @@ def start_bot(call: CallbackQuery):
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
-        processes = get_active_processes(create_connection())
         #TODO добавь тут процессы
         active_process = subprocess.Popen(
             ["poetry", "run", "python", "bot_click.py",
              "--rate", str(record.get("disperce")),
              "--min_summ", str(record.get("min_summ")),
-             "--processes", str(record.get("min_summ"))
+             "--processes", str(processes),
+             "--order_filter", str(record.get("order_filter"))
              ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
+        # active_process = subprocess.Popen(
+        #     ["python", "bot_click.py",
+        #      "--rate", str(record.get("disperce")),
+        #      "--min_summ", str(record.get("min_summ")),
+        #      "--processes", str(processes),
+        #      "--order_filter", str(record.get("order_filter"))
+        #      ],
+        #     stdout=subprocess.PIPE,
+        #     stderr=subprocess.PIPE,
+        #     text=True
+        # )
         records_to_insert.append((
-            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))}",
+            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
             active_process.pid
         ))
         insert_process(create_connection(), records_to_insert)
-        logging.info("Процессы запущен.")
+        logging.info("Процессы запущены.")
     except Exception as e:
         logging.error(f"Ошибка при запуске команды: {e}")
     keyboard.row(
@@ -236,10 +345,14 @@ def start_bot(call: CallbackQuery):
             callback_data="goodbay"
         ),
     )
-
-        # logging.info("Остановка процесса.")
-        # active_process.terminate()
-        # active_process = None
+    for process in get_active_processes(create_connection()):
+        try:
+            pid = process.get("pid")
+            os.kill(pid, signal.SIGTERM)
+            logging.info(f"Процесс с PID {pid} успешно завершен.")
+        except OSError as e:
+            logging.info(f"Ошибка при попытке завершения процесса с PID {pid}: {e}")
+    update_processes(create_connection())
 
     update_positions(
         connection=create_connection(),
@@ -296,6 +409,113 @@ def take_min_amount(message):
         chat_id=message.from_user.id,
         text=f"Неверный формат данных, попробуй ещё раз",
         reply_markup=ReplyKeyboardRemove()
+    )
+
+############################################
+
+@bot.callback_query_handler(func=lambda call: call.data == "start-parse")
+def start_bot(call: CallbackQuery):
+    curse = 0
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(
+        telebot.types.InlineKeyboardButton(
+            "-",
+            callback_data=f"order-minus-{1}"
+        ),
+        telebot.types.InlineKeyboardButton(
+            "+",
+            callback_data=f"order-plus-{1}"
+        ),
+    ).row(
+        telebot.types.InlineKeyboardButton(
+            "Готово",
+            callback_data=f"ready-parce"
+        ),
+    )
+    bot.send_message(
+        chat_id=call.from_user.id,
+        text=f"Максимум необработанных заявок - {curse}",
+        reply_markup=keyboard
+    )
+    update_positions(
+        connection=create_connection(),
+        order_filter=curse
+    )
+    return
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("order-minus"))
+def callback_inline(call: CallbackQuery):
+    dispersion = int(call.data.replace("order-minus-", "")) - 1
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    if dispersion > 0:
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                "-",
+                callback_data=f"order-minus-{dispersion}"
+            ),
+            telebot.types.InlineKeyboardButton(
+                "+",
+                callback_data=f"order-plus-{dispersion}"
+            ),
+        ).row(
+            telebot.types.InlineKeyboardButton(
+                "Готово",
+                callback_data=f"ready-parce"
+            ),
+        )
+    else:
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                "+",
+                callback_data=f"order-plus-{dispersion}"
+            ),
+        ).row(
+            telebot.types.InlineKeyboardButton(
+                "Готово",
+                callback_data=f"ready-parce"
+            ),
+        )
+    update_positions(
+        connection=create_connection(),
+        order_filter=dispersion
+    )
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"Максимум необработанных заявок - {dispersion}",
+        reply_markup=keyboard
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("order-plus"))
+def callback_inline(call: CallbackQuery):
+    dispersion = int(call.data.replace("order-plus-", "")) + 1
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(
+        telebot.types.InlineKeyboardButton(
+            "-",
+            callback_data=f"order-minus-{dispersion}"
+        ),
+        telebot.types.InlineKeyboardButton(
+            "+",
+            callback_data=f"order-plus-{dispersion}"
+        ),
+    ).row(
+        telebot.types.InlineKeyboardButton(
+            "Готово",
+            callback_data=f"ready-parce"
+        ),
+    )
+    update_positions(
+        connection=create_connection(),
+        order_filter=dispersion
+    )
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"Максимум необработанных заявок - {dispersion}",
+        reply_markup=keyboard
     )
 
 

@@ -6,7 +6,8 @@ from decouple import config
 import logging
 import requests
 import urllib.parse
-
+from asgiref.sync import sync_to_async
+from db.init_db import insert_lot
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
@@ -70,14 +71,20 @@ async def take_tocken():
     return None
 
 
-async def take_orders(api_url, headers, curse, session):
+async def take_orders(api_url, headers, curse, session, order_filter):
     while True:
         try:
             response = await send_request(api_url, headers, session)
             logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response}")
+            count = 0
+            logger.info(f"count count: {count}")
             for res in response.get("items", []):
-                if res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment":
+                if res.get("status") == "trader_payment":
+                    count += 1
+                    logger.info(f"count count: {count}")
+                elif res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment" and count != order_filter:
                     await buy(res.get("id"), headers, session)
+                    count += 1
         except Exception as e:
             logger.error(f"Error while processing orders: {e}")
             await asyncio.sleep(5)
@@ -167,8 +174,10 @@ async def buy(id, headers, session):
             result = await response.json()
             if result.get("status", None) == 'trader_payment':
                 logger.info(f"Куплен лот с айди:{id}")
+                await sync_to_async(insert_lot)(lot_id=id)
             else:
                 logger.info(f"Не купили лот с айди:{id}")
+                await sync_to_async(insert_lot)(lot_id=id, status=False)
     except aiohttp.ClientError as e:
         logger.error(f"HTTP error during purchase: {e}")
 
@@ -181,7 +190,7 @@ async def main(args):
         logger.error("No token. Exiting.")
         return
     async with aiohttp.ClientSession() as session:
-        tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session) for _ in range(args.processes)]
+        tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session, int(args.order_filter)) for _ in range(args.processes)]
         await asyncio.gather(*tasks)
 
 
@@ -190,4 +199,5 @@ if __name__ == "__main__":
     parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
+    parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     asyncio.run(main(parser.parse_args()))
