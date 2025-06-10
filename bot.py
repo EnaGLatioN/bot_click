@@ -39,12 +39,18 @@ def send_welcome(message):
             "Нет", 
             callback_data="goodbay"
         ),
+        telebot.types.InlineKeyboardButton(
+            "Завершить все процессы?",
+            callback_data="finish-parse"
+        ),
     )
     bot.reply_to(message, "Запустить бота?", reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "start-bot")
 def start_bot(call: CallbackQuery):
+    chat_id = call.message.chat.id
+    print(f"Chat111111111111 ID: {chat_id}")
     rates = take_rates(RATES_URL, take_token())
     keyboard = telebot.types.InlineKeyboardMarkup()
     for i in rates.values():
@@ -65,15 +71,17 @@ def start_bot(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("take-rates"))
 def callback_inline(call: CallbackQuery):
     rate = call.data.replace("take-rates-", "")
+    chat_id = call.message.chat.id
     if not get_active_records(connection=create_connection()):
         insert_positions(
             connection=create_connection(),
             min_summ=0,
             rate=rate,
             disperce=0,
+            chat=chat_id
         )
     else:
-        update_positions(connection=create_connection(), rate=rate)
+        update_positions(connection=create_connection(), rate=rate, chat=chat_id)
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -411,7 +419,6 @@ def take_min_amount(message):
         reply_markup=ReplyKeyboardRemove()
     )
 
-############################################
 
 @bot.callback_query_handler(func=lambda call: call.data == "start-parse")
 def start_bot(call: CallbackQuery):

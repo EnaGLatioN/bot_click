@@ -7,7 +7,8 @@ import logging
 import requests
 import urllib.parse
 from asgiref.sync import sync_to_async
-from db.init_db import insert_lot
+from db.init_db import insert_lot, get_active_records
+from decouple import config
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
@@ -39,6 +40,23 @@ MONEY_FILTER_OT = config("MONEY_FILTER_OT", cast=str)
 MONEY_FILTER_NO = config("MONEY_FILTER_NO", cast=str)
 
 ACCEPT_URL = config("ACCEPT_URL", cast=str)
+
+TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
+
+
+
+async def send_telegram_message(message):
+    async with aiohttp.ClientSession() as session:
+        telegram_url = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage'
+        chat = await sync_to_async(get_active_records)()
+        payload = {
+            'chat_id': chat[0].get("chat"),
+            'text': message
+        }
+        async with session.post(telegram_url, json=payload) as response:
+            if response.status != 200:
+                logging.error(f"Ошибка отправки уведомления: {await response.text()}")
+
 
 
 async def authenticate_and_get_token(auth_url, payload):
@@ -82,7 +100,7 @@ async def take_orders(api_url, headers, curse, session, order_filter):
                 if res.get("status") == "trader_payment":
                     count += 1
                     logger.info(f"count count: {count}")
-                elif res.get("currencyRate", float('inf')) < curse and res.get("status") != "trader_payment" and count <= order_filter:
+                elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
                     await buy(res.get("id"), headers, session)
                     count += 1
         except Exception as e:
@@ -174,6 +192,7 @@ async def buy(id, headers, session):
             result = await response.json()
             if result.get("status", None) == 'trader_payment':
                 logger.info(f"Куплен лот с айди:{id}")
+                await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
                 await sync_to_async(insert_lot)(lot_id=id)
             else:
                 logger.info(f"Не купили лот с айди:{id}")

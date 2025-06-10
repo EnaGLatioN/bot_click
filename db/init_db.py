@@ -81,13 +81,13 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
             connection.close()
 
 
-def insert_positions(connection, min_summ=None, rate=None, disperce=None, status=None):
+def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=None, status=None):
     try:
         cursor = connection.cursor()
         cursor.execute(
         """
-            INSERT INTO clicker (min_summ, rate, disperce) VALUES (%s, %s, %s);
-        """, (min_summ, rate, disperce))
+            INSERT INTO clicker (min_summ, rate, disperce, chat) VALUES (%s, %s, %s, %s);
+        """, (min_summ, rate, disperce, chat))
         connection.commit()
         logging.info(f"Запись с минимальной суммой '{min_summ}' успешно добавлена.")
     except Exception as error:
@@ -158,7 +158,7 @@ def update_processes(connection):
             connection.close()
 
 
-def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None):
+def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None, chat=None):
     try:
         cursor = connection.cursor()
         update_fields = []
@@ -178,6 +178,9 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
         if order_filter is not None:
             update_fields.append("order_filter = %s")
             update_values.append(order_filter)
+        if chat is not None:
+            update_fields.append("chat = %s")
+            update_values.append(chat)
         if update_fields:
             update_query = f"""
                 UPDATE clicker 
@@ -222,7 +225,8 @@ def add_order_filter_column(connection):
         cursor = connection.cursor()
         cursor.execute("""
             ALTER TABLE clicker
-            ADD COLUMN IF NOT EXISTS order_filter INTEGER;
+            ADD COLUMN IF NOT EXISTS order_filter INTEGER,
+            ADD COLUMN IF NOT EXISTS chat INTEGER;
         """)
         connection.commit()
         logging.info("Столбец order_filter успешно добавлен в таблицу clicker.")
