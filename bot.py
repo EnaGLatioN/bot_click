@@ -196,7 +196,7 @@ def start_bot(call: CallbackQuery):
         ),
     ).row(
         telebot.types.InlineKeyboardButton(
-            "Готово",
+            "СТАРТ",
             callback_data=f"processes-ready-{1}"
         ),
     )
@@ -236,7 +236,7 @@ def callback_inline(call: CallbackQuery):
             ),
         ).row(
             telebot.types.InlineKeyboardButton(
-                "Готово",
+                "СТАРТ",
                 callback_data=f"processes-ready-{dispersion}"
             ),
         )
@@ -263,7 +263,7 @@ def callback_inline(call: CallbackQuery):
         ),
     ).row(
         telebot.types.InlineKeyboardButton(
-            "Готово",
+            "СТАРТ",
             callback_data=f"processes-ready-{dispersion}"
         ),
     )
