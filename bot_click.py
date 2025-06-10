@@ -124,7 +124,7 @@ async def create_encoded_json(filter_int):
         json_string = '{"minAmount":%s}' % (
             f"{min_amount}" if min_amount is not None else "null",
         )
-        return MONEY_FILTER_OT.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
+        return MONEY_FILTER_OT.format(base64.b64encode(json_string.encode('utf-8')).decode('utf-8'))
     json_string = '{"minAmount":%s,"maxAmount":%s}' % (
         f"{min_amount}" if min_amount is not None else "null",
         f"{max_amount}" if max_amount is not None else "null"
