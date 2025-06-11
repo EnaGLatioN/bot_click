@@ -76,15 +76,13 @@ def take_tocken():
         return None
 
 
-#"requisites"
 def take_orders(api_url, headers, curse):
     try:
         while True:
             try:
                 response = requests.get(api_url, headers=headers)
                 logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response.json()}")
-                #response.raise_for_status()
-                logger.info(f"проверка статуса : {response.status_code}")
+                logger.info(f"проверка api_url : {api_url}")
                 if response.status_code == 401:
                     logger.info(f"Получили новый токен: {response.json()}")
                     headers = take_tocken()
@@ -136,12 +134,12 @@ def create_encoded_json(filter_int):
         json_string = '{"minAmount":%s}' % (
             f"{min_amount}" if min_amount is not None else "null",
         )
-        return MONEY_FILTER_OT.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
+        return MONEY_FILTER_OT.format(base64.b64encode(json_string.encode('utf-8')).decode('utf-8'))
     json_string = '{"minAmount":%s,"maxAmount":%s}' % (
         f"{min_amount}" if min_amount is not None else "null",
         f"{max_amount}" if max_amount is not None else "null"
     )
-    return MONEY_FILTER_OT_DO.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
+    return MONEY_FILTER_OT_DO.format(base64.b64encode(json_string.encode('utf-8')).decode('utf-8'))
 
 
 
