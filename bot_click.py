@@ -2,25 +2,41 @@ import base64
 import asyncio
 import aiohttp
 import argparse
-from decouple import config
+import random
 import logging
 import requests
 import urllib.parse
 from asgiref.sync import sync_to_async
 from db.init_db import insert_lot, get_active_records
 from decouple import config
+import queue
+import threading
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
+
+log_queue = queue.Queue()
 
 file_handler = logging.FileHandler("bot.log")
 file_handler.setLevel(logging.DEBUG)
 file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_logger_format)
 
+queue_handler = logging.handlers.QueueHandler(log_queue)
+logger.addHandler(queue_handler)
 
-logger.addHandler(file_handler)
+def log_worker():
+    while True:
+        record = log_queue.get()
+        if record is None:  # Выход из цикла при получении None
+            break
+        file_handler.emit(record)  # Запись в файл
+        log_queue.task_done()
 
+threading.Thread(target=log_worker, daemon=True).start()
+
+def log_thread_safe(message):
+    logger.info(message)
 
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
@@ -43,7 +59,68 @@ ACCEPT_URL = config("ACCEPT_URL", cast=str)
 
 TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
-
+proxies = {
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP1"),
+        port=config("PR_PORT1")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP2"),
+        port=config("PR_PORT2")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP3"),
+        port=config("PR_PORT3")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP4"),
+        port=config("PR_PORT4")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP5"),
+        port=config("PR_PORT5")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP6"),
+        port=config("PR_PORT6")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP7"),
+        port=config("PR_PORT7")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP8"),
+        port=config("PR_PORT8")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP9"),
+        port=config("PR_PORT9")
+    ),
+    config("PR").format(
+        user=config("PR_USER"),
+        password=config("PR_PASS"),
+        ip=config("PR_IP10"),
+        port=config("PR_PORT10")
+    ),
+}
 
 async def send_telegram_message(message):
     async with aiohttp.ClientSession() as session:
@@ -65,19 +142,23 @@ async def authenticate_and_get_token(auth_url, payload):
             async with session.post(auth_url, json=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
+                logger.info(f"Получение токена --:{data.get('accessToken')}")
                 return data.get('accessToken')
         except aiohttp.ClientError as e:
             logger.error(f"HTTP error during authentication: {e}")
     return None
 
 
-async def send_request(api_url, headers, session):
+
+async def send_request(api_url, headers, session, proxy):
+    logger.info(f"Отправляем запрос  --:{api_url, headers, session, proxy}")
     try:
-        async with session.get(api_url, headers=headers) as response:
+        async with session.get(api_url, headers=headers, proxy=proxy) as response:
+            logger.info(f"Ответ --:{response}")
             response.raise_for_status()
             return await response.json()
     except aiohttp.ClientError as e:
-        logger.error(f"HTTP error occurred: {e}")
+        logger.error(f"HTTP error occurred: {e} - Proxy: {proxy}")
     return None
 
 
@@ -89,23 +170,25 @@ async def take_tocken():
     return None
 
 
-async def take_orders(api_url, headers, curse, session, order_filter):
+async def take_orders(api_url, headers, curse, session, order_filter, proxy):
+    logger.info(f"Начяинал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
     while True:
         try:
-            response = await send_request(api_url, headers, session)
+            response = await send_request(api_url, headers, session, proxy)
+            logger.info(f"ПРОКСИ пришедших лотов: {proxy}")
             logger.info(f"ПРИШЕДШИЕ ЛОТЫ: {response}")
             count = 0
             logger.info(f"count count: {count}")
             for res in response.get("items", []):
                 if res.get("status") == "trader_payment":
                     count += 1
-                    logger.info(f"count count: {count}")
                 elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
+                    logger.info(f"Покупаем: {res.get("currencyRate")}")
                     await buy(res.get("id"), headers, session)
                     count += 1
         except Exception as e:
             logger.error(f"Error while processing orders: {e}")
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
 
 
 def take_rates(rates_url, headers):
@@ -209,7 +292,11 @@ async def main(args):
         logger.error("No token. Exiting.")
         return
     async with aiohttp.ClientSession() as session:
-        tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session, int(args.order_filter)) for _ in range(args.processes)]
+        pr = list(proxies)
+        for i in range(min(len(pr), args.processes)):
+            proxy = pr[i]
+            logger.info(f"Прокси запущен в работу :{proxies[i]}")
+            tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session, int(args.order_filter), proxy)]
         await asyncio.gather(*tasks)
 
 
