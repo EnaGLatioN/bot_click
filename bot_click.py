@@ -2,8 +2,6 @@ import base64
 import asyncio
 import aiohttp
 import argparse
-import random
-import logging
 import requests
 import urllib.parse
 from asgiref.sync import sync_to_async
@@ -12,6 +10,8 @@ from decouple import config
 import queue
 import threading
 import logging.handlers
+from requests.auth import HTTPProxyAuth
+
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
@@ -26,6 +26,7 @@ file_handler.setFormatter(file_logger_format)
 queue_handler = logging.handlers.QueueHandler(log_queue)
 logger.addHandler(queue_handler)
 
+
 def log_worker():
     while True:
         record = log_queue.get()
@@ -34,10 +35,13 @@ def log_worker():
         file_handler.emit(record)  # Запись в файл
         log_queue.task_done()
 
+
 threading.Thread(target=log_worker, daemon=True).start()
+
 
 def log_thread_safe(message):
     logger.info(message)
+
 
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
@@ -62,66 +66,47 @@ TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
 proxies = {
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP1"),
         port=config("PR_PORT1")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP2"),
         port=config("PR_PORT2")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP3"),
         port=config("PR_PORT3")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP4"),
         port=config("PR_PORT4")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP5"),
         port=config("PR_PORT5")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP6"),
         port=config("PR_PORT6")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP7"),
         port=config("PR_PORT7")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP8"),
         port=config("PR_PORT8")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP9"),
         port=config("PR_PORT9")
     ),
     config("PR").format(
-        user=config("PR_USER"),
-        password=config("PR_PASS"),
         ip=config("PR_IP10"),
         port=config("PR_PORT10")
     ),
 }
+
 
 async def send_telegram_message(message):
     async with aiohttp.ClientSession() as session:
@@ -134,7 +119,6 @@ async def send_telegram_message(message):
         async with session.post(telegram_url, json=payload) as response:
             if response.status != 200:
                 log_thread_safe(f"Ошибка отправки уведомления: {await response.text()}")
-
 
 
 async def authenticate_and_get_token(auth_url, payload):
@@ -150,11 +134,11 @@ async def authenticate_and_get_token(auth_url, payload):
     return None
 
 
-
 async def send_request(api_url, headers, session, proxy):
     log_thread_safe(f"Отправляем запрос  --:{api_url, headers, session, proxy}")
     try:
-        async with session.get(api_url, headers=headers, proxy=proxy) as response:
+        auth = aiohttp.BasicAuth(config("PR_USER"), config("PR_PASS"))
+        async with session.post(api_url, headers=headers, proxy=proxy, auth=auth) as response:
             log_thread_safe(f"Ответ --:{response}")
             response.raise_for_status()
             return await response.json()
@@ -183,7 +167,8 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy):
             for res in response.get("items", []):
                 if res.get("status") == "trader_payment":
                     count += 1
-                elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
+                elif res.get("currencyRate") < curse and res.get(
+                        "status") != "trader_payment" and count <= order_filter:
                     log_thread_safe(f"Покупаем: {res.get("currencyRate")}")
                     await buy(res.get("id"), headers, session)
                     count += 1
@@ -297,7 +282,8 @@ async def main(args):
         for i in range(min(len(pr), args.processes)):
             proxy = pr[i]
             log_thread_safe(f"Прокси запущен в работу :{pr[i]}")
-            tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session, int(args.order_filter), proxy)]
+            tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
+                                 int(args.order_filter), proxy)]
         await asyncio.gather(*tasks)
 
 
