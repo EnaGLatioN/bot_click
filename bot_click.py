@@ -30,9 +30,9 @@ logger.addHandler(queue_handler)
 def log_worker():
     while True:
         record = log_queue.get()
-        if record is None:  # Выход из цикла при получении None
+        if record is None:
             break
-        file_handler.emit(record)  # Запись в файл
+        file_handler.emit(record)
         log_queue.task_done()
 
 
@@ -138,7 +138,7 @@ async def send_request(api_url, headers, session, proxy):
     log_thread_safe(f"Отправляем запрос  --:{api_url, headers, session, proxy}")
     try:
         auth = aiohttp.BasicAuth(config("PR_USER"), config("PR_PASS"))
-        async with session.post(api_url, headers=headers, proxy=proxy, auth=auth) as response:
+        async with session.get(api_url, proxy=proxy, auth=auth) as response:
             log_thread_safe(f"Ответ --:{response}")
             response.raise_for_status()
             return await response.json()
@@ -167,8 +167,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy):
             for res in response.get("items", []):
                 if res.get("status") == "trader_payment":
                     count += 1
-                elif res.get("currencyRate") < curse and res.get(
-                        "status") != "trader_payment" and count <= order_filter:
+                elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
                     log_thread_safe(f"Покупаем: {res.get("currencyRate")}")
                     await buy(res.get("id"), headers, session)
                     count += 1
@@ -277,7 +276,7 @@ async def main(args):
     if not headers:
         log_thread_safe("No token. Exiting.")
         return
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers=headers) as session:
         pr = list(proxies)
         for i in range(min(len(pr), args.processes)):
             proxy = pr[i]
