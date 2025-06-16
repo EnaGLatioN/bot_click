@@ -134,15 +134,18 @@ async def authenticate_and_get_token(auth_url, payload):
     return None
 
 
-async def send_request(api_url, headers, session, proxy):
-    log_thread_safe(f"Отправляем запрос  --:{api_url, headers, session, proxy}")
+def send_request(api_url, headers, proxy):
+    log_thread_safe(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
-        auth = aiohttp.BasicAuth(config("PR_USER"), config("PR_PASS"))
-        async with session.get(api_url, proxy=proxy, auth=auth) as response:
-            log_thread_safe(f"Ответ --:{response}")
-            response.raise_for_status()
-            return await response.json()
-    except aiohttp.ClientError as e:
+        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+        proxies = {
+            'http': proxy,
+        }
+        response = requests.get(url=api_url, proxies=proxies, auth=auth)
+        log_thread_safe(f"Ответ --:{response}")
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
         log_thread_safe(f"HTTP error occurred: {e} - Proxy: {proxy}")
     return None
 
@@ -150,6 +153,7 @@ async def send_request(api_url, headers, session, proxy):
 async def take_tocken():
     token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
     if token:
+        log_thread_safe(f"Authorization: f'Bearer {token}'")
         return {"Authorization": f"Bearer {token}"}
     log_thread_safe("Failed to authenticate.")
     return None
@@ -159,7 +163,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy):
     log_thread_safe(f"Начяинал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
     while True:
         try:
-            response = await send_request(api_url, headers, session, proxy)
+            response = await sync_to_async(send_request)(api_url, headers, proxy)
             log_thread_safe(f"ПРОКСИ пришедших лотов: {proxy}")
             log_thread_safe(f"ПРИШЕДШИЕ ЛОТЫ: {response}")
             count = 0
@@ -276,13 +280,14 @@ async def main(args):
     if not headers:
         log_thread_safe("No token. Exiting.")
         return
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession() as session:
         pr = list(proxies)
+        tasks = []
         for i in range(min(len(pr), args.processes)):
             proxy = pr[i]
             log_thread_safe(f"Прокси запущен в работу :{pr[i]}")
-            tasks = [take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
-                                 int(args.order_filter), proxy)]
+            tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
+                                 int(args.order_filter), proxy))
         await asyncio.gather(*tasks)
 
 
