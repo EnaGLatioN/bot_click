@@ -141,7 +141,7 @@ def send_request(api_url, headers, proxy):
         proxies = {
             'http': proxy,
         }
-        response = requests.get(url=api_url, proxies=proxies, auth=auth)
+        response = requests.get(url=api_url, headers=headers, proxies=proxies, auth=auth)
         log_thread_safe(f"Ответ --:{response}")
         response.raise_for_status()
         return response.json()
