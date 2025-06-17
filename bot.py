@@ -305,6 +305,8 @@ def start_bot(call: CallbackQuery):
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
+        print("DDDDDDDDDDDDDDDDDD")
+        print(record)
         #TODO добавь тут процессы
         active_process = subprocess.Popen(
             ["poetry", "run", "python", "bot_click.py",
@@ -323,7 +325,8 @@ def start_bot(call: CallbackQuery):
         #      "--rate", str(record.get("disperce")),
         #      "--min_summ", str(record.get("min_summ")),
         #      "--processes", str(processes),
-        #      "--order_filter", str(record.get("order_filter"))
+        #      "--order_filter", str(record.get("order_filter")),
+        #       "--timer",  str(record.get("timer")),
         #      ],
         #     stdout=subprocess.PIPE,
         #     stderr=subprocess.PIPE,
@@ -428,6 +431,7 @@ def take_min_amount(message):
     if int(message.json.get("text")) < 1000:
         active = get_active_records(connection=create_connection())
         keyboard = telebot.types.InlineKeyboardMarkup()
+        update_positions(connection=create_connection(), timer=int(message.json.get("text")))
         keyboard.row(
         ).row(
             telebot.types.InlineKeyboardButton(
