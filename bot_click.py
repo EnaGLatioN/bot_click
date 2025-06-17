@@ -171,7 +171,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy, tim
             log_thread_safe(f"count count: {count}")
             for res in response.get("items", []):
                 api_time = datetime.datetime.fromisoformat(res.get("maxTimeoutAt"))
-                timer = datetime.timedelta(minutes=-timer)
+                timer = datetime.timedelta(minutes=-int(timer))
                 api_time = api_time - timer
                 tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
                 now = datetime.datetime.now(tzinfo)
