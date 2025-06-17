@@ -141,7 +141,7 @@ def send_request(api_url, headers, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         proxies = {
             'http': proxy,
-        }
+         }
         response = requests.get(url=api_url, headers=headers, proxies=proxies, auth=auth)
         log_thread_safe(f"Ответ --:{response}")
         response.raise_for_status()
@@ -179,6 +179,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy, tim
                     continue
                 if res.get("status") == "trader_payment":
                     count += 1
+                    continue
                 elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
                     log_thread_safe(f"Покупаем: {res.get("currencyRate")}")
                     await buy(res.get("id"), headers, session)
