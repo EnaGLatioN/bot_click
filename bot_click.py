@@ -141,28 +141,29 @@ async def take_tocken():
 
 
 async def take_orders(api_url, headers, curse, session, order_filter, proxy, timer):
-    await sync_to_async(logger.info)(f"Начяинал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
+    await sync_to_async(logger.info)(f"Начал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
-            await sync_to_async(logger.info)(f"ПРОКСИ пришедших лотов: {proxy}")
-            await sync_to_async(logger.info)(f"ПРИШЕДШИЕ ЛОТЫ: {response}")
+            if await sync_to_async(response.get)('status_code') == 401:
+                await sync_to_async(logger.info)(f"Получили новый токен: {response.json()}")
+                headers = await take_tocken()
             count = 0
-            await sync_to_async(logger.info)(f"count count: {count}")
-            for res in response.get("items", []):
-                api_time = datetime.datetime.fromisoformat(res.get("maxTimeoutAt"))
-                timer = datetime.timedelta(minutes=-int(timer))
-                api_time = api_time - timer
-                tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
-                now = datetime.datetime.now(tzinfo)
+            for res in await sync_to_async(response.get)("items", []):
+                to_time = await sync_to_async(res.get)("maxTimeoutAt")
+                api_time =  await sync_to_async(datetime.datetime.fromisoformat)(to_time)
+                timer_at =  await sync_to_async(datetime.timedelta)(minutes=-await sync_to_async(int)(timer))
+                api_time = api_time - timer_at
+                tzinfo =  await sync_to_async(datetime.timezone)(datetime.timedelta(hours=5.0))
+                now =  await sync_to_async(datetime.datetime.now)(tzinfo)
                 if api_time > now:
                     continue
-                if res.get("status") == "trader_payment":
+                if  await sync_to_async(res.get)("status") == "trader_payment":
                     count += 1
                     continue
-                elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
-                    logger.info(f"Покупаем: {res.get("currencyRate")}")
-                    await buy(res.get("id"), headers, session)
+                elif  await sync_to_async(res.get)("currencyRate") < curse and  await sync_to_async(res.get)("status") != "trader_payment" and count <= order_filter:
+                    logger.info(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
+                    await buy(await sync_to_async(res.get)("id"), headers, session)
                     count += 1
         except Exception as e:
             await sync_to_async(logger.info)(f"Error while processing orders: {e}")
