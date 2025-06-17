@@ -145,9 +145,10 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy, tim
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
+            await sync_to_async(logger.info)(f"ЛОТЫ: {response.get('items')}")
             if await sync_to_async(response.get)('status_code') == 401:
-                await sync_to_async(logger.info)(f"Получили новый токен: {response.json()}")
                 headers = await take_tocken()
+                await sync_to_async(logger.info)(f"Получили новый токен: {headers}")
             count = 0
             for res in await sync_to_async(response.get)("items", []):
                 to_time = await sync_to_async(res.get)("maxTimeoutAt")
