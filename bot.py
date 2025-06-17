@@ -204,7 +204,7 @@ def start_bot(call: CallbackQuery):
         ),
     ).row(
         telebot.types.InlineKeyboardButton(
-            "СТАРТ",
+            "ДАЛЕЕ",
             callback_data=f"processes-ready-{1}"
         ),
     )
@@ -244,7 +244,7 @@ def callback_inline(call: CallbackQuery):
             ),
         ).row(
             telebot.types.InlineKeyboardButton(
-                "СТАРТ",
+                "ДАЛЕЕ",
                 callback_data=f"processes-ready-{dispersion}"
             ),
         )
@@ -271,7 +271,7 @@ def callback_inline(call: CallbackQuery):
         ),
     ).row(
         telebot.types.InlineKeyboardButton(
-            "СТАРТ",
+            "ДАЛЕЕ",
             callback_data=f"processes-ready-{dispersion}"
         ),
     )
@@ -283,10 +283,20 @@ def callback_inline(call: CallbackQuery):
         reply_markup=keyboard
     )
 
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("processes-ready"))
 def start_bot(call: CallbackQuery):
     processes = int(call.data.replace("processes-ready-", ""))
+    update_positions(connection=create_connection(), num_proc=processes)
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="Введите таймер целым числом от 1 до 999",
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("proc-start"))
+def start_bot(call: CallbackQuery):
+    processes = int(call.data.replace("proc-start-", ""))
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
     records_to_insert = []
@@ -301,7 +311,8 @@ def start_bot(call: CallbackQuery):
              "--rate", str(record.get("disperce")),
              "--min_summ", str(record.get("min_summ")),
              "--processes", str(processes),
-             "--order_filter", str(record.get("order_filter"))
+             "--order_filter", str(record.get("order_filter")),
+             "--timer",  str(record.get("timer")),
              ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -385,7 +396,7 @@ def start_bot(call: CallbackQuery):
 
 @bot.message_handler(content_types=['text'])
 def take_min_amount(message):
-    if message.json.get("text").isdigit():
+    if message.json.get("text").isdigit() and int(message.json.get("text")) > 1000:
         update_positions(
             connection=create_connection(),
             min_summ=int(message.json.get("text")),
@@ -410,6 +421,23 @@ def take_min_amount(message):
         bot.send_message(
             chat_id=message.from_user.id,
             text=f"Отклонение от курса: {0.1}% (max: {curse + (curse * 0.1 / 100)})",
+            reply_markup=keyboard
+        )
+        return
+
+    if int(message.json.get("text")) < 1000:
+        active = get_active_records(connection=create_connection())
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+        ).row(
+            telebot.types.InlineKeyboardButton(
+                "ЗАПУСК",
+                callback_data=f"proc-start-{active[0].get('num_proc')}"
+            ),
+        )
+        bot.send_message(
+            chat_id=message.from_user.id,
+            text=f"Вы выбрали таймер {message.json.get('text')}",
             reply_markup=keyboard
         )
         return

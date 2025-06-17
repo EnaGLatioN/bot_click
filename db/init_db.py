@@ -158,7 +158,7 @@ def update_processes(connection):
             connection.close()
 
 
-def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None, chat=None):
+def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None, chat=None, timer=None, num_proc=None):
     try:
         cursor = connection.cursor()
         update_fields = []
@@ -181,6 +181,12 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
         if chat is not None:
             update_fields.append("chat = %s")
             update_values.append(chat)
+        if timer is not None:
+            update_fields.append("timer = %s")
+            update_values.append(timer)
+        if num_proc is not None:
+            update_fields.append("num_proc = %s")
+            update_values.append(num_proc)
         if update_fields:
             update_query = f"""
                 UPDATE clicker 
@@ -226,7 +232,9 @@ def add_order_filter_column(connection):
         cursor.execute("""
             ALTER TABLE clicker
             ADD COLUMN IF NOT EXISTS order_filter INTEGER,
-            ADD COLUMN IF NOT EXISTS chat INTEGER;
+            ADD COLUMN IF NOT EXISTS chat INTEGER,
+            ADD COLUMN IF NOT EXISTS num_proc INTEGER,
+            ADD COLUMN IF NOT EXISTS timer INTEGER;
         """)
         connection.commit()
         logging.info("Столбец order_filter успешно добавлен в таблицу clicker.")

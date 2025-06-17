@@ -2,7 +2,7 @@ import base64
 import asyncio
 import aiohttp
 import argparse
-import requests
+import datetime
 import urllib.parse
 from asgiref.sync import sync_to_async
 from db.init_db import insert_lot, get_active_records
@@ -135,6 +135,7 @@ async def authenticate_and_get_token(auth_url, payload):
 
 
 def send_request(api_url, headers, proxy):
+    import requests
     log_thread_safe(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
@@ -159,7 +160,7 @@ async def take_tocken():
     return None
 
 
-async def take_orders(api_url, headers, curse, session, order_filter, proxy):
+async def take_orders(api_url, headers, curse, session, order_filter, proxy, timer):
     log_thread_safe(f"Начяинал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
     while True:
         try:
@@ -169,6 +170,13 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy):
             count = 0
             log_thread_safe(f"count count: {count}")
             for res in response.get("items", []):
+                api_time = datetime.datetime.fromisoformat(res.get("maxTimeoutAt"))
+                timer = datetime.timedelta(minutes=-timer)
+                api_time = api_time - timer
+                tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
+                now = datetime.datetime.now(tzinfo)
+                if api_time > now:
+                    continue
                 if res.get("status") == "trader_payment":
                     count += 1
                 elif res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
@@ -181,6 +189,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy):
 
 
 def take_rates(rates_url, headers):
+    import requests
     curse = {}
     try:
         response = requests.get(rates_url, headers=headers)
@@ -287,7 +296,7 @@ async def main(args):
             proxy = pr[i]
             log_thread_safe(f"Прокси запущен в работу :{pr[i]}")
             tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
-                                 int(args.order_filter), proxy))
+                                 int(args.order_filter), proxy, args.timer))
         await asyncio.gather(*tasks)
 
 
@@ -297,4 +306,5 @@ if __name__ == "__main__":
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
+    parser.add_argument("--timer", type=int, help="Таймер заявки.")
     asyncio.run(main(parser.parse_args()))
