@@ -26,6 +26,48 @@ from db.init_db import (
 
 bot = telebot.TeleBot(config("TELE_TOCKEN", cast=str))
 
+proxies = [
+    config("PR").format(
+        ip=config("PR_IP1"),
+        port=config("PR_PORT1")
+    ),
+    config("PR").format(
+        ip=config("PR_IP2"),
+        port=config("PR_PORT2")
+    ),
+    config("PR").format(
+        ip=config("PR_IP3"),
+        port=config("PR_PORT3")
+    ),
+    config("PR").format(
+        ip=config("PR_IP4"),
+        port=config("PR_PORT4")
+    ),
+    config("PR").format(
+        ip=config("PR_IP5"),
+        port=config("PR_PORT5")
+    ),
+    config("PR").format(
+        ip=config("PR_IP6"),
+        port=config("PR_PORT6")
+    ),
+    config("PR").format(
+        ip=config("PR_IP7"),
+        port=config("PR_PORT7")
+    ),
+    config("PR").format(
+        ip=config("PR_IP8"),
+        port=config("PR_PORT8")
+    ),
+    config("PR").format(
+        ip=config("PR_IP9"),
+        port=config("PR_PORT9")
+    ),
+    config("PR").format(
+        ip=config("PR_IP10"),
+        port=config("PR_PORT10")
+    ),
+]
 
 @bot.message_handler(commands=['start',])
 def send_welcome(message):
@@ -308,19 +350,22 @@ def start_bot(call: CallbackQuery):
         print("DDDDDDDDDDDDDDDDDD")
         print(record)
         #TODO добавь тут процессы
-        active_process = subprocess.Popen(
-            ["poetry", "run", "python", "bot_click.py",
-             "--rate", str(record.get("disperce")),
-             "--min_summ", str(record.get("min_summ")),
-             "--processes", str(processes),
-             "--order_filter", str(record.get("order_filter")),
-             "--timer",  str(record.get("timer")),
-             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1
-        )
+        #"docker","exec","-it","clicker1",
+        for i in range(min(len(proxies), processes)):
+            active_process = subprocess.Popen(
+                ["poetry", "run", "python", "bot_click.py",
+                 "--rate", str(record.get("disperce")),
+                 "--min_summ", str(record.get("min_summ")),
+                 "--processes", str(processes),
+                 "--order_filter", str(record.get("order_filter")),
+                 "--timer",  str(record.get("timer")),
+                 "--proxy", str(proxies[i]),
+                 ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
         # active_process = subprocess.Popen(
         #     ["python", "bot_click.py",
         #      "--rate", str(record.get("disperce")),
@@ -333,20 +378,21 @@ def start_bot(call: CallbackQuery):
         #     stderr=subprocess.PIPE,
         #     text=True
         # )
-        records_to_insert.append((
-            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
-            active_process.pid
-        ))
-        insert_process(create_connection(), records_to_insert)
-        logging.info("Процессы запущены.")
+            records_to_insert.append((
+                f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
+                active_process.pid
+            ))
+            insert_process(create_connection(), records_to_insert)
+            logging.info(f"Процессы запущены.")
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                "Остановить",
+                callback_data=f"finish-parse"
+            ),
+        )
     except Exception as e:
         logging.error(f"Ошибка при запуске команды: {e}")
-    keyboard.row(
-        telebot.types.InlineKeyboardButton(
-            "Остановить", 
-            callback_data=f"finish-parse"
-        ),
-    )
+
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -357,6 +403,7 @@ def start_bot(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data == "finish-parse")
 def start_bot(call: CallbackQuery):
+    active_processes = call.data.replace("proc-start-", "")
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.row(
         telebot.types.InlineKeyboardButton(
@@ -400,7 +447,18 @@ def start_bot(call: CallbackQuery):
 
 @bot.message_handler(content_types=['text'])
 def take_min_amount(message):
-    if message.json.get("text").isdigit() and int(message.json.get("text")) > 1000:
+    summa = int(message.json.get("text")) if message.json.get("text").isdigit() else None
+    print("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")
+    print(summa)
+    if summa is None:
+        print("GHGHGHGHGHGHGHGHHGG")
+        bot.send_message(
+            chat_id=message.from_user.id,
+            text=f"Неверный формат данных, попробуй ещё раз",
+            reply_markup=ReplyKeyboardRemove()
+        )
+    if (summa >= 1000) and (summa is not None):
+        print("YAYAYAYAYYAYAYAY")
         update_positions(
             connection=create_connection(),
             min_summ=int(message.json.get("text")),
@@ -429,7 +487,9 @@ def take_min_amount(message):
         )
         return
 
-    if int(message.json.get("text")) < 1000:
+    if (summa < 1000) and (summa is not None):
+        print("HHHHHHHHHHHHHHHHHHHH")
+        print("LOOLOLOLLOOLOLOLLOOLOL")
         active = get_active_records(connection=create_connection())
         keyboard = telebot.types.InlineKeyboardMarkup()
         update_positions(connection=create_connection(), timer=int(message.json.get("text")))
@@ -446,11 +506,7 @@ def take_min_amount(message):
             reply_markup=keyboard
         )
         return
-    bot.send_message(
-        chat_id=message.from_user.id,
-        text=f"Неверный формат данных, попробуй ещё раз",
-        reply_markup=ReplyKeyboardRemove()
-    )
+
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "start-parse")
