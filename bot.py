@@ -7,12 +7,8 @@ import telebot
 from telebot.types import ReplyKeyboardRemove, CallbackQuery
 from decouple import config
 
-from services import take_token
-from bot_click import (
-    RATES_URL,
-    take_rates,
-    take_tocken
-)
+from services import take_token, take_rates, RATES_URL
+
 from db.init_db import (
     insert_positions,
     create_connection,
@@ -93,7 +89,8 @@ def send_welcome(message):
 def start_bot(call: CallbackQuery):
     chat_id = call.message.chat.id
     print(f"Chat111111111111 ID: {chat_id}")
-    rates = take_rates(RATES_URL, take_tocken(proxies[7]), proxies[7])
+    rates = take_rates(RATES_URL, take_token())
+    print(f"ratesratesrates: {rates}")
     keyboard = telebot.types.InlineKeyboardMarkup()
     for i in rates.values():
         keyboard.row(
@@ -351,29 +348,28 @@ def start_bot(call: CallbackQuery):
         print(record)
         #TODO добавь тут процессы
         pr = list(proxies)
-        for i in range(min(len(pr), processes)):
-            proxy = pr[i]
-            print("ASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
-            active_process = subprocess.Popen(
-                ["poetry", "run", "python", "bot_click.py",
-                 "--rate", str(record.get("disperce")),
-                 "--min_summ", str(record.get("min_summ")),
-                 "--processes", str(processes),
-                 "--order_filter", str(record.get("order_filter")),
-                 "--timer", str(record.get("timer")),
-                 "--proxy", proxy,
-                 ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            print(proxy)
-            print(active_process)
-            records_to_insert.append((
-                f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
-                active_process.pid
-            ))
-            logging.info("Процесс запущен.")
+        # for i in range(min(len(pr), processes)):
+        #     proxy = pr[i]
+        #     print("ASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
+        active_process = subprocess.Popen(
+            ["poetry", "run", "python", "bot_click.py",
+             "--rate", str(record.get("disperce")),
+             "--min_summ", str(record.get("min_summ")),
+             "--processes", str(processes),
+             "--order_filter", str(record.get("order_filter")),
+             "--timer", str(record.get("timer")),
+             "--proxy", proxies[processes],
+             ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        print(active_process)
+        records_to_insert.append((
+            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
+            active_process.pid
+        ))
+        logging.info("Процесс запущен.")
         print("LLLLLLLLLLLLLLLLLLLLLLLLLLLL")
         logging.info(records_to_insert)
         insert_process(create_connection(), records_to_insert)

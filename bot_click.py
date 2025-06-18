@@ -1,5 +1,6 @@
 import base64
 import argparse
+import os
 import datetime
 import urllib.parse
 from asgiref.sync import sync_to_async
@@ -8,6 +9,20 @@ from decouple import config
 import requests
 from requests.auth import HTTPProxyAuth
 import logging
+
+# def configure_logger(process_id):
+#     logger = logging.getLogger(f"my_bot_{process_id}")
+#     logger.setLevel(logging.DEBUG)
+#     log_filename = f"bot_{process_id}.log"
+#     file_handler = logging.FileHandler(log_filename)
+#     file_handler.setLevel(logging.DEBUG)
+#
+#     file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+#     file_handler.setFormatter(file_logger_format)
+#
+#     logger.addHandler(file_handler)
+#     return logger
+
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
@@ -19,7 +34,6 @@ file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)
 file_handler.setFormatter(file_logger_format)
 
 logger.addHandler(file_handler)
-
 
 
 AUTH_URL = config("AUTH_URL", cast=str)
@@ -149,15 +163,10 @@ def send_request(api_url, headers, proxy):
     import requests
     logger.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
-        logger.info(f"auth tut")
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
-        logger.info(f"auth tut -- {auth}")
         prox =dict()
-        logger.info(f"proxproxproxprox-- {prox}")
         prox['http'] = proxy
-        logger.info(f"responseresponseresponseresponse")
         response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth)
-        #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
         logger.info(f"Ответ --:{response}")
         response.raise_for_status()
         return response.json()
@@ -210,32 +219,6 @@ def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                     count += 1
         except Exception as e:
             logger.info(f"Error while processing orders: {e}")
-
-
-def take_rates(rates_url, headers, proxy=None):
-    curse = {}
-    try:
-        if proxy is not None:
-            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
-            prox = dict()
-            prox['http'] = proxy
-            response = requests.get(url=rates_url, headers=headers, proxies=prox, auth=auth)
-            response.raise_for_status()
-        else:
-            response = requests.get(rates_url, headers=headers)
-            response.raise_for_status()
-        count = 0
-        for res in response.json():
-            if res.get("source", None) in RATES and res.get("name", None) in RATES:
-                count += 1
-                curse[count] = f"{res.get('price', None)}"
-        return curse
-    except requests.exceptions.HTTPError as http_err:
-        logger.info(f"HTTP ошибка возникла: {http_err}")
-        return {"error": str(http_err)}
-    except Exception as err:
-        logger.info(f"Произошла другая ошибка: {err}")
-        return {"error": str(err)}
 
 
 def create_encoded_json(filter_int):
@@ -324,6 +307,8 @@ def main(args):
 
 
 if __name__ == "__main__":
+    # logger = configure_logger(os.getpid())
+    # logger.info(f"LOOOOOOOOOOOOGIIIGIGIGIGIGIGIG  -- {logger}")
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
@@ -331,7 +316,5 @@ if __name__ == "__main__":
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
     parser.add_argument("--proxy", type=int, help="Прокси процесса.")
-    args = parser.parse_args()
-    logger.info(f"PPPPPPRRRRRIIIIISSSSHHHHLLLLLOOOOOOO")
-    logger.info(f"PPPPPPRRRRRIIIIISSSSHHHHLLLLLOOOOOOO - {args}")
-    main(args)
+    main(parser.parse_args())
+

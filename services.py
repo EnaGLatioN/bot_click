@@ -4,15 +4,8 @@ import requests
 from requests.auth import HTTPProxyAuth
 
 
-logger = logging.getLogger("my_bot")
-logger.setLevel(logging.DEBUG)
+logger = logging
 
-file_handler = logging.FileHandler("bot.log")
-file_handler.setLevel(logging.DEBUG)
-file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(file_logger_format)
-
-logger.addHandler(file_handler)
 
 
 AUTH_URL = config("AUTH_URL", cast=str)
@@ -20,6 +13,9 @@ AUTH_PAYLOAD = {
     "email": config("MAIL", cast=str),
     "password": config("PASSWORD", cast=str)
 }
+RATES_URL = config("RATES_URL", cast=str)
+
+RATES = {"bybit", "", "[RUB] SBERBANK", "ByBit Tinkoff ", "Rapira", "Rapira minus ", "rapira"}
 
 
 def authenticate_and_get_token(auth_url, payload, proxy=None):
@@ -33,6 +29,7 @@ def authenticate_and_get_token(auth_url, payload, proxy=None):
             response = requests.post(auth_url, json=payload)
             response.raise_for_status()
         data =  response.json()
+        print("TOOOOOOOOOOOOOOOOOOOKEN", data.get('accessToken'))
         logger.info(f"Получение токена --:{data.get('accessToken')}")
         return data.get('accessToken')
     except Exception as e:
@@ -50,3 +47,29 @@ def take_token(proxy=None):
         return {"Authorization": f"Bearer {token}"}
     logger.info("Failed to authenticate.")
     return None
+
+
+def take_rates(rates_url, headers, proxy=None):
+    curse = {}
+    try:
+        if proxy is not None:
+            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+            prox = dict()
+            prox['http'] = proxy
+            response = requests.get(url=rates_url, headers=headers, proxies=prox, auth=auth)
+            response.raise_for_status()
+        else:
+            response = requests.get(rates_url, headers=headers)
+            response.raise_for_status()
+        count = 0
+        for res in response.json():
+            if res.get("source", None) in RATES and res.get("name", None) in RATES:
+                count += 1
+                curse[count] = f"{res.get('price', None)}"
+        return curse
+    except requests.exceptions.HTTPError as http_err:
+        logger.info(f"HTTP ошибка возникла: {http_err}")
+        return {"error": str(http_err)}
+    except Exception as err:
+        logger.info(f"Произошла другая ошибка: {err}")
+        return {"error": str(err)}
