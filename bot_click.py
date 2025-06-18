@@ -264,8 +264,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # logger = configure_logger(os.getpid())
-    # logger.info(f"LOOOOOOOOOOOOGIIIGIGIGIGIGIGIG  -- {logger}")
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
