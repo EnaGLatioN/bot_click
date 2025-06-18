@@ -382,8 +382,8 @@ def start_bot(call: CallbackQuery):
                 f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
                 active_process.pid
             ))
-            insert_process(create_connection(), records_to_insert)
-            logging.info(f"Процессы запущены.")
+            logging.info(f"Процесс запущен.---- {active_process.pid}")
+        insert_process(create_connection(), records_to_insert)
         keyboard.row(
             telebot.types.InlineKeyboardButton(
                 "Остановить",

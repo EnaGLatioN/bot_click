@@ -103,7 +103,7 @@ async def authenticate_and_get_token(auth_url, payload, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.post)(url=auth_url,payload=payload, proxies=prox, auth=auth)
+        response = await sync_to_async(requests.post)(url=auth_url,json=payload, proxies=prox, auth=auth)
         data = await sync_to_async(response.json)()
         await async_log(f"Получение токена --:{data.get('accessToken')}")
         return data.get('accessToken')
