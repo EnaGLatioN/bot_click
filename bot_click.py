@@ -270,21 +270,25 @@ async def buy(id, headers, session):
 
 
 async def main(args):
-    await sync_to_async(logger.info)("АРГУМЕНТЫ СТАРТА БОТА")
-    await sync_to_async(logger.info)(args)
-    headers = await take_tocken()
-    if not headers:
-        await sync_to_async(logger.info)("No token. Exiting.")
-        return
-    async with aiohttp.ClientSession() as session:
-        pr = list(proxies)
-        tasks = []
-        for i in range(min(len(pr), args.processes)):
-            proxy = pr[i]
-            await sync_to_async(logger.info)(f"Прокси запущен в работу :{pr[i]}")
-            tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
-                                 int(args.order_filter), proxy, args.timer))
-        await asyncio.gather(*tasks)
+    while True:
+        try:
+            await sync_to_async(logger.info)("АРГУМЕНТЫ СТАРТА БОТА")
+            await sync_to_async(logger.info)(args)
+            headers = await take_tocken()
+            if not headers:
+                await sync_to_async(logger.info)("No token. Exiting.")
+                return
+            async with aiohttp.ClientSession() as session:
+                pr = list(proxies)
+                tasks = []
+                for i in range(min(len(pr), args.processes)):
+                    proxy = pr[i]
+                    await sync_to_async(logger.info)(f"Прокси запущен в работу :{pr[i]}")
+                    tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
+                                         int(args.order_filter), proxy, args.timer))
+                await asyncio.gather(*tasks)
+        except Exception as e:
+            await sync_to_async(logger.info)(f"РЕСТАРТ :{args} ------- {e}")
 
 
 if __name__ == "__main__":
