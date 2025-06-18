@@ -152,10 +152,14 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy, tim
             count = 0
             for res in await sync_to_async(response.get)("items", []):
                 to_time = await sync_to_async(res.get)("maxTimeoutAt")
+                await sync_to_async(logger.info)(f"to_timeto_time: {to_time}")
                 api_time =  await sync_to_async(datetime.datetime.fromisoformat)(to_time)
+                await sync_to_async(logger.info)(f"api_timeapi_time: {api_time}")
                 timer_at =  await sync_to_async(datetime.timedelta)(minutes=-await sync_to_async(int)(timer))
+                await sync_to_async(logger.info)(f"timer_attimer_at: {timer_at}")
                 api_time = api_time - timer_at
                 tzinfo =  await sync_to_async(datetime.timezone)(datetime.timedelta(hours=5.0))
+                await sync_to_async(logger.info)(f"tzinfotzinfo: {tzinfo}")
                 now =  await sync_to_async(datetime.datetime.now)(tzinfo)
                 if api_time > now:
                     continue
