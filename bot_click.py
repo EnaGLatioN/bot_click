@@ -1,13 +1,11 @@
 import base64
-import asyncio
-import aiohttp
 import argparse
 import datetime
 import urllib.parse
 from asgiref.sync import sync_to_async
 from db.init_db import insert_lot, get_active_records
 from decouple import config
-
+import requests
 from requests.auth import HTTPProxyAuth
 import logging
 
@@ -89,29 +87,36 @@ proxies = {
 }
 
 
-async def send_telegram_message(message):
-    async with aiohttp.ClientSession() as session:
+def send_telegram_message(message):
+    try:
         telegram_url = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage'
-        chat = await sync_to_async(get_active_records)()
+        chat = get_active_records()
         payload = {
             'chat_id': chat[0].get("chat"),
             'text': message
         }
-        async with session.post(telegram_url, json=payload) as response:
-            if response.status != 200:
-                await sync_to_async(logger.info)(f"Ошибка отправки уведомления: {await response.text()}")
+        response = requests.post(telegram_url, json=payload)
+        logger.info(f"Уведомление в телегу отправлено -- {response.json()}")
+        response.raise_for_status()
+    except Exception as e:
+        logger.info(f"HTTP error: {e}")
 
 
-async def authenticate_and_get_token(auth_url, payload):
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.post(auth_url, json=payload) as response:
-                response.raise_for_status()
-                data = await response.json()
-                await sync_to_async(logger.info)(f"Получение токена --:{data.get('accessToken')}")
-                return data.get('accessToken')
-        except aiohttp.ClientError as e:
-            await sync_to_async(logger.info)(f"HTTP error during authentication: {e}")
+def authenticate_and_get_token(auth_url, payload, proxy=None):
+    try:
+        if proxy is not None:
+            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+            prox = dict()
+            prox['http'] = proxy
+            response = requests.post(url=auth_url, json=payload, proxies=prox, auth=auth)
+        else:
+            response = requests.post(auth_url, json=payload)
+            response.raise_for_status()
+        data =  response.json()
+        logger.info(f"Получение токена --:{data.get('accessToken')}")
+        return data.get('accessToken')
+    except Exception as e:
+       logger.info(f"HTTP error during authentication: {e}")
     return None
 
 
@@ -161,56 +166,64 @@ def send_request(api_url, headers, proxy):
     return None
 
 
-async def take_tocken():
-    token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
+def take_tocken(proxy=None):
+    if proxy is not None:
+        token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD, proxy)
+    else:
+        token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
     if token:
-        await sync_to_async(logger.info)(f"Authorization: f'Bearer {token}'")
+        logger.info(f"Authorization: f'Bearer {token}'")
         return {"Authorization": f"Bearer {token}"}
-    await sync_to_async(logger.info)("Failed to authenticate.")
+    logger.info("Failed to authenticate.")
     return None
 
 
-async def take_orders(api_url, headers, curse, session, order_filter, proxy, timer):
-    await sync_to_async(logger.info)(f"Начал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
+def take_orders(api_url, headers, curse, order_filter, proxy, timer):
+    logger.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
     while True:
         try:
-            response = await sync_to_async(send_request)(api_url, headers, proxy)
-            await sync_to_async(logger.info)(f"ЛОТЫ: {response.get('items')}")
-            if await sync_to_async(response.get)('status_code') == 401:
-                headers = await take_tocken()
-                await sync_to_async(logger.info)(f"Получили новый токен: {headers}")
+            response = send_request(api_url, headers, proxy)
+            logger.info(f"ЛОТЫ: {response.get('items')}")
+            if response.get('status_code') == 401:
+                headers = take_tocken()
+                logger.info(f"Получили новый токен: {headers}")
             count = 0
-            for res in await sync_to_async(response.get)("items", []):
-                to_time = await sync_to_async(res.get)("maxTimeoutAt")
-                await sync_to_async(logger.info)(f"to_timeto_time: {to_time}")
-                api_time =  await sync_to_async(datetime.datetime.fromisoformat)(to_time)
-                await sync_to_async(logger.info)(f"api_timeapi_time: {api_time}")
-                timer_at =  await sync_to_async(datetime.timedelta)(minutes=-await sync_to_async(int)(timer))
-                await sync_to_async(logger.info)(f"timer_attimer_at: {timer_at}")
+            for res in response.get("items", []):
+                to_time = res.get("maxTimeoutAt")
+                logger.info(f"to_timeto_time: {to_time}")
+                api_time = datetime.datetime.fromisoformat(to_time)
+                logger.info(f"api_timeapi_time: {api_time}")
+                timer_at =  datetime.timedelta(minutes=-int(timer))
+                logger.info(f"timer_attimer_at: {timer_at}")
                 api_time = api_time - timer_at
-                tzinfo =  await sync_to_async(datetime.timezone)(datetime.timedelta(hours=5.0))
-                await sync_to_async(logger.info)(f"tzinfotzinfo: {tzinfo}")
-                now =  await sync_to_async(datetime.datetime.now)(tzinfo)
+                tzinfo =  datetime.timezone(datetime.timedelta(hours=5.0))
+                logger.info(f"tzinfotzinfo: {tzinfo}")
+                now = datetime.datetime.now(tzinfo)
                 if api_time > now:
                     continue
-                if  await sync_to_async(res.get)("status") == "trader_payment":
+                if  res.get("status") == "trader_payment":
                     count += 1
                     continue
-                elif  await sync_to_async(res.get)("currencyRate") < curse and  await sync_to_async(res.get)("status") != "trader_payment" and count <= order_filter:
-                    logger.info(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
-                    await buy(await sync_to_async(res.get)("id"), headers, session)
+                elif  res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
+                    logger.info(f"Покупаем: {res.get("currencyRate")}")
+                    buy(res.get("id"), headers)
                     count += 1
         except Exception as e:
-            await sync_to_async(logger.info)(f"Error while processing orders: {e}")
-            await asyncio.sleep(1)
+            logger.info(f"Error while processing orders: {e}")
 
 
-def take_rates(rates_url, headers):
-    import requests
+def take_rates(rates_url, headers, proxy=None):
     curse = {}
     try:
-        response = requests.get(rates_url, headers=headers)
-        response.raise_for_status()
+        if proxy is not None:
+            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+            prox = dict()
+            prox['http'] = proxy
+            response = requests.get(url=rates_url, headers=headers, proxies=prox, auth=auth)
+            response.raise_for_status()
+        else:
+            response = requests.get(rates_url, headers=headers)
+            response.raise_for_status()
         count = 0
         for res in response.json():
             if res.get("source", None) in RATES and res.get("name", None) in RATES:
@@ -225,15 +238,15 @@ def take_rates(rates_url, headers):
         return {"error": str(err)}
 
 
-async def create_encoded_json(filter_int):
-    await sync_to_async(logger.info)("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    await sync_to_async(logger.info)(filter_int)
+def create_encoded_json(filter_int):
+    logger.info("POKUPKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    logger.info(filter_int)
     if filter_int is None:
         return MONEY_FILTER_NO
     try:
         min_amount, max_amount = filter_int
     except Exception as e:
-        await sync_to_async(logger.info)(f"Сломан фильр -- {filter_int} -- {e}")
+        logger.info(f"Сломан фильр -- {filter_int} -- {e}")
         max_amount = None
         min_amount = filter_int
     if min_amount and max_amount is None:
@@ -283,32 +296,31 @@ def fix_filter(selected_filter):
     return None
 
 
-async def buy(id, headers, session):
+def buy(id, headers):
     try:
-        async with session.post(ACCEPT_URL.format(id), headers=headers) as response:
-            response.raise_for_status()
-            result = await response.json()
-            if result.get("status", None) == 'trader_payment':
-                await sync_to_async(logger.info)(f"Куплен лот с айди:{id}")
-                await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
-                await sync_to_async(insert_lot)(lot_id=id)
-            else:
-                await sync_to_async(logger.info)(f"Не купили лот с айди:{id}")
-                await sync_to_async(insert_lot)(lot_id=id, status=False)
-    except aiohttp.ClientError as e:
-        await sync_to_async(logger.info)(f"HTTP error during purchase: {e}")
+        response = requests.post(ACCEPT_URL.format(id), headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        if result.get("status", None) == 'trader_payment':
+            logger.info(f"Куплен лот с айди:{id}")
+            send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
+            sync_to_async(insert_lot)(lot_id=id)
+        else:
+            logger.info(f"Не купили лот с айди:{id}")
+            insert_lot(lot_id=id, status=False)
+    except Exception as e:
+        logger.info(f"HTTP error during purchase: {e}")
 
 
 def main(args):
     logger.info("АРГУМЕНТЫ СТАРТА БОТА")
     logger.info(args)
-    headers = take_tocken()
+    headers = take_tocken(args.proxy)
     if not headers:
-        await sync_to_async(logger.info)("No token. Exiting.")
+        logger.info("No token. Exiting.")
         return
     logger.info(f"Прокси запущен в работу :{args.proxy}")
-    take_orders(create_encoded_json(args.min_summ), headers, float(args.rate), session,
-                      int(args.order_filter), args.proxy, args.timer)
+    take_orders(create_encoded_json(args.min_summ), headers, float(args.rate),int(args.order_filter), args.proxy, args.timer)
 
 
 if __name__ == "__main__":
@@ -319,4 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
     parser.add_argument("--proxy", type=int, help="Прокси процесса.")
-    asyncio.run(main(parser.parse_args()))
+    args = parser.parse_args()
+    logger.info(f"PPPPPPRRRRRIIIIISSSSHHHHLLLLLOOOOOOO")
+    logger.info(f"PPPPPPRRRRRIIIIISSSSHHHHLLLLLOOOOOOO - {args}")
+    main(args)

@@ -11,6 +11,7 @@ from services import take_token
 from bot_click import (
     RATES_URL,
     take_rates,
+    take_tocken
 )
 from db.init_db import (
     insert_positions,
@@ -25,7 +26,7 @@ from db.init_db import (
 # TELE_TOCKEN = "8094728804:AAHdXxJZ00MUlCaZaRdiRIv35yYUWtWHkJI"
 
 bot = telebot.TeleBot(config("TELE_TOCKEN", cast=str))
-proxies = {
+proxies = [
     config("PR").format(
         ip=config("PR_IP1"),
         port=config("PR_PORT1")
@@ -66,7 +67,7 @@ proxies = {
         ip=config("PR_IP10"),
         port=config("PR_PORT10")
     ),
-}
+]
 
 @bot.message_handler(commands=['start',])
 def send_welcome(message):
@@ -92,7 +93,7 @@ def send_welcome(message):
 def start_bot(call: CallbackQuery):
     chat_id = call.message.chat.id
     print(f"Chat111111111111 ID: {chat_id}")
-    rates = take_rates(RATES_URL, take_token())
+    rates = take_rates(RATES_URL, take_tocken(proxies[7]), proxies[7])
     keyboard = telebot.types.InlineKeyboardMarkup()
     for i in rates.values():
         keyboard.row(
@@ -359,7 +360,7 @@ def start_bot(call: CallbackQuery):
                  "--min_summ", str(record.get("min_summ")),
                  "--processes", str(processes),
                  "--order_filter", str(record.get("order_filter")),
-                 "--timer",  str(record.get("timer")),
+                 "--timer", str(record.get("timer")),
                  "--proxy", proxy,
                  ],
                 stdout=subprocess.PIPE,
@@ -375,20 +376,7 @@ def start_bot(call: CallbackQuery):
             logging.info("Процесс запущен.")
         print("LLLLLLLLLLLLLLLLLLLLLLLLLLLL")
         logging.info(records_to_insert)
-
         insert_process(create_connection(), records_to_insert)
-        # active_process = subprocess.Popen(
-        #     ["python", "bot_click.py",
-        #      "--rate", str(record.get("disperce")),
-        #      "--min_summ", str(record.get("min_summ")),
-        #      "--processes", str(processes),
-        #      "--order_filter", str(record.get("order_filter")),
-        #       "--timer",  str(record.get("timer")),
-        #      ],
-        #     stdout=subprocess.PIPE,
-        #     stderr=subprocess.PIPE,
-        #     text=True
-        # )
 
     except Exception as e:
         logging.error(f"Ошибка при запуске команды: {e}")

@@ -1,6 +1,7 @@
 from decouple import config
 import logging
 import requests
+from requests.auth import HTTPProxyAuth
 
 
 logger = logging.getLogger("my_bot")
@@ -21,26 +22,31 @@ AUTH_PAYLOAD = {
 }
 
 
-def authenticate_and_get_token(auth_url, payload):
+def authenticate_and_get_token(auth_url, payload, proxy=None):
     try:
-        response = requests.post(auth_url, json=payload)
-        response.raise_for_status()
-        return response.json().get('accessToken')
-    except requests.exceptions.HTTPError as http_err:
-        logger.info(f"HTTP error occurred during authentication: {http_err}")
-        logger.info(f"Response content: {response.text}")
-    except Exception as err:
-        logger.info(f"Other error occurred during authentication: {err}")
+        if proxy is not None:
+            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+            prox = dict()
+            prox['http'] = proxy
+            response = requests.post(url=auth_url, json=payload, proxies=prox, auth=auth)
+        else:
+            response = requests.post(auth_url, json=payload)
+            response.raise_for_status()
+        data =  response.json()
+        logger.info(f"Получение токена --:{data.get('accessToken')}")
+        return data.get('accessToken')
+    except Exception as e:
+       logger.info(f"HTTP error during authentication: {e}")
     return None
 
 
-def take_token():
-    token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    if token:
-        return headers
+def take_token(proxy=None):
+    if proxy is not None:
+        token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD, proxy)
     else:
-        logger.info("Failed to authenticate.")
-        return None
+        token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
+    if token:
+        logger.info(f"Authorization: f'Bearer {token}'")
+        return {"Authorization": f"Bearer {token}"}
+    logger.info("Failed to authenticate.")
+    return None
