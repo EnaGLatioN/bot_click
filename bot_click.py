@@ -57,49 +57,6 @@ ACCEPT_URL = config("ACCEPT_URL", cast=str)
 
 TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
-proxies = {
-    config("PR").format(
-        ip=config("PR_IP1"),
-        port=config("PR_PORT1")
-    ),
-    config("PR").format(
-        ip=config("PR_IP2"),
-        port=config("PR_PORT2")
-    ),
-    config("PR").format(
-        ip=config("PR_IP3"),
-        port=config("PR_PORT3")
-    ),
-    config("PR").format(
-        ip=config("PR_IP4"),
-        port=config("PR_PORT4")
-    ),
-    config("PR").format(
-        ip=config("PR_IP5"),
-        port=config("PR_PORT5")
-    ),
-    config("PR").format(
-        ip=config("PR_IP6"),
-        port=config("PR_PORT6")
-    ),
-    config("PR").format(
-        ip=config("PR_IP7"),
-        port=config("PR_PORT7")
-    ),
-    config("PR").format(
-        ip=config("PR_IP8"),
-        port=config("PR_PORT8")
-    ),
-    config("PR").format(
-        ip=config("PR_IP9"),
-        port=config("PR_PORT9")
-    ),
-    config("PR").format(
-        ip=config("PR_IP10"),
-        port=config("PR_PORT10")
-    ),
-}
-
 
 def send_telegram_message(message):
     try:

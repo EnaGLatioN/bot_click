@@ -4,10 +4,6 @@ import requests
 from requests.auth import HTTPProxyAuth
 
 
-logger = logging
-
-
-
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
     "email": config("MAIL", cast=str),
@@ -30,10 +26,10 @@ def authenticate_and_get_token(auth_url, payload, proxy=None):
             response.raise_for_status()
         data =  response.json()
         print("TOOOOOOOOOOOOOOOOOOOKEN", data.get('accessToken'))
-        logger.info(f"Получение токена --:{data.get('accessToken')}")
+        logging.info(f"Получение токена --:{data.get('accessToken')}")
         return data.get('accessToken')
     except Exception as e:
-       logger.info(f"HTTP error during authentication: {e}")
+       logging.info(f"HTTP error during authentication: {e}")
     return None
 
 
@@ -43,9 +39,9 @@ def take_token(proxy=None):
     else:
         token = authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
     if token:
-        logger.info(f"Authorization: f'Bearer {token}'")
+        logging.info(f"Authorization: f'Bearer {token}'")
         return {"Authorization": f"Bearer {token}"}
-    logger.info("Failed to authenticate.")
+    logging.info("Failed to authenticate.")
     return None
 
 
@@ -68,8 +64,8 @@ def take_rates(rates_url, headers, proxy=None):
                 curse[count] = f"{res.get('price', None)}"
         return curse
     except requests.exceptions.HTTPError as http_err:
-        logger.info(f"HTTP ошибка возникла: {http_err}")
+        logging.info(f"HTTP ошибка возникла: {http_err}")
         return {"error": str(http_err)}
     except Exception as err:
-        logger.info(f"Произошла другая ошибка: {err}")
+        logging.info(f"Произошла другая ошибка: {err}")
         return {"error": str(err)}

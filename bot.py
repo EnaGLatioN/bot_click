@@ -358,7 +358,7 @@ def start_bot(call: CallbackQuery):
              "--processes", str(processes),
              "--order_filter", str(record.get("order_filter")),
              "--timer", str(record.get("timer")),
-             "--proxy", proxies[processes],
+             "--proxy", str(proxies[processes]),
              ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -366,7 +366,7 @@ def start_bot(call: CallbackQuery):
         )
         print(active_process)
         records_to_insert.append((
-            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
+            f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))} --timer {str(record.get('timer'))}",
             active_process.pid
         ))
         logging.info("Процесс запущен.")
