@@ -289,7 +289,7 @@ async def main(args):
                 await asyncio.gather(*tasks)
         except Exception as e:
             await sync_to_async(logger.info)(f"РЕСТАРТ :{args} ------- {e}")
-
+            continue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Description of your script.")
