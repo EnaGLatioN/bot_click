@@ -347,10 +347,6 @@ def start_bot(call: CallbackQuery):
         print("DDDDDDDDDDDDDDDDDD")
         print(record)
         #TODO добавь тут процессы
-        pr = list(proxies)
-        # for i in range(min(len(pr), processes)):
-        #     proxy = pr[i]
-        #     print("ASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
         active_process = subprocess.Popen(
             ["poetry", "run", "python", "bot_click.py",
              "--rate", str(record.get("disperce")),

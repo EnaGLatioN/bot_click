@@ -270,6 +270,6 @@ if __name__ == "__main__":
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
-    parser.add_argument("--proxy", type=int, help="Прокси процесса.")
+    parser.add_argument("--proxy", type=str, help="Прокси процесса.")
     main(parser.parse_args())
 
