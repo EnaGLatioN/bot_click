@@ -115,29 +115,49 @@ async def authenticate_and_get_token(auth_url, payload):
     return None
 
 
-async def send_request(api_url, headers, proxy):
-    import requests
-    await sync_to_async(logger.info)(f"Отправляем запрос  --:{api_url, headers, proxy}")
-    try:
-        await sync_to_async(logger.info)(f"auth tut")
-        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
-        await sync_to_async(logger.info)(f"auth tut -- {auth}")
-        prox = await sync_to_async(dict)()
-        await sync_to_async(logger.info)(f"proxproxproxprox-- {prox}")
-        prox['http'] = proxy
-        await sync_to_async(logger.info)(f"responseresponseresponseresponse")
-        response = await asyncio.wait_for(
-            sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth),
-            timeout=2
-        )
-        await sync_to_async(logger.info)(f"!!!!!!!!!!responseresponseresponseresponse -- {response}")
+# async def send_request(api_url, headers, proxy):
+#     import requests
+#     await sync_to_async(logger.info)(f"Отправляем запрос  --:{api_url, headers, proxy}")
+#     try:
+#         await sync_to_async(logger.info)(f"auth tut")
+#         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+#         await sync_to_async(logger.info)(f"auth tut -- {auth}")
+#         prox = await sync_to_async(dict)()
+#         await sync_to_async(logger.info)(f"proxproxproxprox-- {prox}")
+#         prox['http'] = proxy
+#         await sync_to_async(logger.info)(f"responseresponseresponseresponse")
+#         response = await asyncio.wait_for(
+#             sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth),
+#             timeout=2
+#         )
+#         await sync_to_async(logger.info)(f"!!!!!!!!!!responseresponseresponseresponse -- {response}")
+#
+#         #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
+#         await sync_to_async(logger.info)(f"Ответ --:{response}")
+#         await sync_to_async(response.raise_for_status)()
+#         return await sync_to_async(response.json)()
+#     except Exception as e:
+#         await sync_to_async(logger.info)(f"HTTP error occurred: {e} - Proxy: {proxy}")
+#     return None
 
+def send_request(api_url, headers, proxy):
+    import requests
+    logger.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
+    try:
+        logger.info(f"auth tut")
+        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+        logger.info(f"auth tut -- {auth}")
+        prox =dict()
+        logger.info(f"proxproxproxprox-- {prox}")
+        prox['http'] = proxy
+        logger.info(f"responseresponseresponseresponse")
+        response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth)
         #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
-        await sync_to_async(logger.info)(f"Ответ --:{response}")
-        await sync_to_async(response.raise_for_status)()
-        return await sync_to_async(response.json)()
+        logger.info(f"Ответ --:{response}")
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
-        await sync_to_async(logger.info)(f"HTTP error occurred: {e} - Proxy: {proxy}")
+        logger.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
     return None
 
 
@@ -154,7 +174,7 @@ async def take_orders(api_url, headers, curse, session, order_filter, proxy, tim
     await sync_to_async(logger.info)(f"Начал брать ордера --:{api_url, headers, curse, session, order_filter, proxy}")
     while True:
         try:
-            response = await send_request(api_url, headers, proxy)
+            response = await sync_to_async(send_request)(api_url, headers, proxy)
             await sync_to_async(logger.info)(f"ЛОТЫ: {response.get('items')}")
             if await sync_to_async(response.get)('status_code') == 401:
                 headers = await take_tocken()
@@ -279,22 +299,16 @@ async def buy(id, headers, session):
         await sync_to_async(logger.info)(f"HTTP error during purchase: {e}")
 
 
-async def main(args):
-    await sync_to_async(logger.info)("АРГУМЕНТЫ СТАРТА БОТА")
-    await sync_to_async(logger.info)(args)
-    headers = await take_tocken()
+def main(args):
+    logger.info("АРГУМЕНТЫ СТАРТА БОТА")
+    logger.info(args)
+    headers = take_tocken()
     if not headers:
         await sync_to_async(logger.info)("No token. Exiting.")
         return
-    async with aiohttp.ClientSession() as session:
-        pr = list(proxies)
-        tasks = []
-        for i in range(min(len(pr), args.processes)):
-            proxy = pr[i]
-            await sync_to_async(logger.info)(f"Прокси запущен в работу :{pr[i]}")
-            tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate), session,
-                                 int(args.order_filter), proxy, args.timer))
-        await asyncio.gather(*tasks)
+    logger.info(f"Прокси запущен в работу :{args.proxy}")
+    take_orders(create_encoded_json(args.min_summ), headers, float(args.rate), session,
+                      int(args.order_filter), args.proxy, args.timer)
 
 
 if __name__ == "__main__":
@@ -304,4 +318,5 @@ if __name__ == "__main__":
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
+    parser.add_argument("--proxy", type=int, help="Прокси процесса.")
     asyncio.run(main(parser.parse_args()))
