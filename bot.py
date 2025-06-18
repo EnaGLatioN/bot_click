@@ -318,7 +318,8 @@ def start_bot(call: CallbackQuery):
              ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            bufsize=1
         )
         # active_process = subprocess.Popen(
         #     ["python", "bot_click.py",

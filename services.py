@@ -3,10 +3,10 @@ import logging
 import requests
 
 
-logger = logging.getLogger("my_bot")
+logger = logging.getLogger("my_bot_services")
 logger.setLevel(logging.DEBUG)
 
-file_handler = logging.FileHandler("bot.log")
+file_handler = logging.FileHandler("services.log")
 file_handler.setLevel(logging.DEBUG)
 file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_logger_format)
