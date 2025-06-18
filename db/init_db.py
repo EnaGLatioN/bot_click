@@ -69,7 +69,7 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
         cursor.execute(
         """
             INSERT INTO lots (lot_id, status) VALUES (%s, %s);
-        """, lot_id, status)
+        """, int(lot_id), status)
         connection.commit()
         logging.info(f"Запись с лот айди -- '{lot_id}' успешно добавлена.")
     except Exception as error:
@@ -87,7 +87,7 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
         cursor.execute(
         """
             INSERT INTO clicker (min_summ, rate, disperce, chat) VALUES (%s, %s, %s, %s);
-        """, (min_summ, rate, disperce, chat))
+        """, (int(min_summ), float(rate), float(disperce), chat))
         connection.commit()
         logging.info(f"Запись с минимальной суммой '{min_summ}' успешно добавлена.")
     except Exception as error:
@@ -165,7 +165,7 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
         update_values = []
         if min_summ is not None:
             update_fields.append("min_summ = %s")
-            update_values.append(min_summ)
+            update_values.append(int(min_summ))
         if rate is not None:
             update_fields.append("rate = %s")
             update_values.append(rate)
