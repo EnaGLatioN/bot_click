@@ -219,9 +219,9 @@ def get_user_choice(rates):
             if choice in rates:
                 return choice
             else:
-                logger.info("Неверный номер. Пожалуйста, выберите номер из списка.")
+                print("Неверный номер. Пожалуйста, выберите номер из списка.")
         except ValueError:
-            logger.error("Пожалуйста, введите корректный номер.")
+            print("Пожалуйста, введите корректный номер.")
 
 
 def get_filters():
