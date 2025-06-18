@@ -87,7 +87,7 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
         cursor.execute(
         """
             INSERT INTO clicker (min_summ, rate, disperce, chat) VALUES (%s, %s, %s, %s);
-        """, (int(min_summ), float(rate), float(disperce), chat))
+        """, (int(min_summ), rate,disperce, chat))
         connection.commit()
         logging.info(f"Запись с минимальной суммой '{min_summ}' успешно добавлена.")
     except Exception as error:
