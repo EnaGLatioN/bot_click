@@ -122,7 +122,11 @@ async def send_request(api_url, headers, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
+        response = await asyncio.wait_for(
+            sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth),
+            timeout=2
+        )
+        #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
         await sync_to_async(logger.info)(f"Ответ --:{response}")
         await sync_to_async(response.raise_for_status)()
         return await sync_to_async(response.json)()
