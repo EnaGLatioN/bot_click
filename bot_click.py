@@ -119,13 +119,19 @@ async def send_request(api_url, headers, proxy):
     import requests
     await sync_to_async(logger.info)(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
+        await sync_to_async(logger.info)(f"auth tut")
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+        await sync_to_async(logger.info)(f"auth tut -- {auth}")
         prox = await sync_to_async(dict)()
+        await sync_to_async(logger.info)(f"proxproxproxprox-- {prox}")
         prox['http'] = proxy
+        await sync_to_async(logger.info)(f"responseresponseresponseresponse")
         response = await asyncio.wait_for(
             sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth),
             timeout=2
         )
+        await sync_to_async(logger.info)(f"!!!!!!!!!!responseresponseresponseresponse -- {response}")
+
         #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
         await sync_to_async(logger.info)(f"Ответ --:{response}")
         await sync_to_async(response.raise_for_status)()
