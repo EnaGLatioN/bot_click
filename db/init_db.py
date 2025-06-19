@@ -64,7 +64,7 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
         cursor.execute(
         """
             INSERT INTO lots (lot_id, status) VALUES (%s, %s);
-        """, int(lot_id), status)
+        """, lot_id, status)
         connection.commit()
         logging.info(f"Запись с лот айди -- '{lot_id}' успешно добавлена.")
     except Exception as error:
