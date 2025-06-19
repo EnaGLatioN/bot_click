@@ -123,7 +123,7 @@ def send_request(api_url, headers, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox =dict()
         prox['http'] = proxy
-        response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth)
+        response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
         logger.info(f"Ответ --:{response}")
         response.raise_for_status()
         return response.json()
@@ -165,7 +165,7 @@ def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                 tzinfo =  datetime.timezone(datetime.timedelta(hours=5.0))
                 logger.info(f"tzinfotzinfo: {tzinfo}")
                 now = datetime.datetime.now(tzinfo)
-                if api_time > now:
+                if api_time < now:
                     continue
                 if  res.get("status") == "trader_payment":
                     count += 1
