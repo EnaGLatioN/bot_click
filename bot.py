@@ -351,21 +351,20 @@ def start_bot(call: CallbackQuery):
         print(record)
         #TODO добавь тут процессы
         #"docker","exec","-it","clicker1",
-        for i in range(min(len(proxies), processes)):
-            active_process = subprocess.Popen(
-                ["poetry", "run", "python", "bot_click.py",
-                 "--rate", str(record.get("disperce")),
-                 "--min_summ", str(record.get("min_summ")),
-                 "--processes", str(processes),
-                 "--order_filter", str(record.get("order_filter")),
-                 "--timer",  str(record.get("timer")),
-                 "--proxy", str(proxies[i]),
-                 ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1
-            )
+        with open("bot.log", "a") as log_file:
+            for i in range(min(len(proxies), processes)):
+                    active_process = subprocess.Popen(
+                        ["poetry", "run", "python", "bot_click.py",
+                         "--rate", str(record.get("disperce")),
+                         "--min_summ", str(record.get("min_summ")),
+                         "--processes", str(processes),
+                         "--order_filter", str(record.get("order_filter")),
+                         "--timer", str(record.get("timer")),
+                         "--proxy", str(proxies[processes])],
+                        stdout=log_file,
+                        stderr=subprocess.STDOUT,
+                        text=True
+                    )
         # active_process = subprocess.Popen(
         #     ["python", "bot_click.py",
         #      "--rate", str(record.get("disperce")),
