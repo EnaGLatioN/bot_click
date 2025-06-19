@@ -431,7 +431,12 @@ def start_bot(call: CallbackQuery):
 
 @bot.message_handler(content_types=['text'])
 def take_min_amount(message):
+    print("JJJJJJJJJJJJJJJJJJJJJJJ")
+    print(message.json.get("text"))
+    print(type(message.json.get("text")))
     if message.json.get("text").isdigit() and int(message.json.get("text")) > 1000:
+        print("JJJJJJJJJJJJJJ22222222222222222JJJJJJJJJ")
+        print(int(message.json.get("text")))
         update_positions(
             connection=create_connection(),
             min_summ=int(message.json.get("text")),

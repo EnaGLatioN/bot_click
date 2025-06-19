@@ -159,7 +159,7 @@ def update_processes(connection):
 
 
 def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None, chat=None, timer=None, num_proc=None):
-    try:
+    # try:
         cursor = connection.cursor()
         update_fields = []
         update_values = []
@@ -198,9 +198,9 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
             logging.info("Записи с статусом TRUE успешно обновлены.")
         else:
             logging.warning("Нет данных для обновления.")
-    except Exception as error:
-        logging.error(f"Ошибка при обновлении данных: {error}")
-    finally:
+    # except Exception as error:
+    #     logging.error(f"Ошибка при обновлении данных: {error}")
+    # finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
