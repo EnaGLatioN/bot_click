@@ -88,9 +88,9 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: call.data == "start-bot")
 def start_bot(call: CallbackQuery):
     chat_id = call.message.chat.id
-    print(f"Chat111111111111 ID: {chat_id}")
+    logging.error(f"Chat111111111111 ID: {chat_id}")
     rates = take_rates(RATES_URL, take_token())
-    print(f"ratesratesrates: {rates}")
+    logging.error(f"ratesratesrates: {rates}")
     keyboard = telebot.types.InlineKeyboardMarkup()
     for i in rates.values():
         keyboard.row(
@@ -344,8 +344,8 @@ def start_bot(call: CallbackQuery):
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
-        print("DDDDDDDDDDDDDDDDDD")
-        print(record)
+        logging.error("DDDDDDDDDDDDDDDDDD")
+        logging.error(record)
         #TODO добавь тут процессы
         active_process = subprocess.Popen(
             ["poetry", "run", "python", "bot_click.py",
@@ -360,13 +360,13 @@ def start_bot(call: CallbackQuery):
             stderr=subprocess.PIPE,
             text=True
         )
-        print(active_process)
+        logging.error(active_process)
         records_to_insert.append((
             f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))} --timer {str(record.get('timer'))}",
             active_process.pid
         ))
         logging.info("Процесс запущен.")
-        print("LLLLLLLLLLLLLLLLLLLLLLLLLLLL")
+        logging.error("LLLLLLLLLLLLLLLLLLLLLLLLLLLL")
         logging.info(records_to_insert)
         insert_process(create_connection(), records_to_insert)
 
@@ -431,12 +431,12 @@ def start_bot(call: CallbackQuery):
 
 @bot.message_handler(content_types=['text'])
 def take_min_amount(message):
-    print("JJJJJJJJJJJJJJJJJJJJJJJ")
-    print(message.json.get("text"))
-    print(type(message.json.get("text")))
+    logging.error("JJJJJJJJJJJJJJJJJJJJJJJ")
+    logging.error(message.json.get("text"))
+    logging.error(type(message.json.get("text")))
     if message.json.get("text").isdigit() and int(message.json.get("text")) > 1000:
-        print("JJJJJJJJJJJJJJ22222222222222222JJJJJJJJJ")
-        print(int(message.json.get("text")))
+        logging.error("JJJJJJJJJJJJJJ22222222222222222JJJJJJJJJ")
+        logging.error(int(message.json.get("text")))
         update_positions(
             connection=create_connection(),
             min_summ=int(message.json.get("text")),
