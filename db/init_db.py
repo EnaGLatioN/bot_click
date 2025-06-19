@@ -55,7 +55,7 @@ def create_table(connection):
         connection.commit()
         logging.info("Таблица clicker и processes успешно созданы.")
     except Exception as error:
-        logging.error(f"Ошибка при создании таблиц: {error}")
+        logging.error(f"Ошибка при создании таблиц create_table: {error}")
 
 
 def insert_lot(connection=create_connection(), lot_id=None, status=True):
@@ -68,7 +68,7 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
         connection.commit()
         logging.info(f"Запись с лот айди -- '{lot_id}' успешно добавлена.")
     except Exception as error:
-        logging.error(f"Ошибка при вставке данных: {error}")
+        logging.error(f"Ошибка при вставке данных insert_lot: {error}")
     finally:
         if cursor is not None:
             cursor.close()
@@ -77,7 +77,7 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
 
 
 def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=None, status=None):
-    # try:
+    try:
         cursor = connection.cursor()
         cursor.execute(
         """
@@ -85,9 +85,9 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
         """, (min_summ, rate, disperce, chat))
         connection.commit()
         logging.info(f"Запись с минимальной суммой '{min_summ}' успешно добавлена.")
-    # except Exception as error:
-    #     logging.error(f"Ошибка при вставке данных: {error}")
-    # finally:
+    except Exception as error:
+        logging.error(f"Ошибка при вставке данных insert_positions: {error}")
+    finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
@@ -95,7 +95,7 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
 
 
 def insert_process(connection, process_data):
-    # try:
+    try:
         cursor = connection.cursor()
         execute_values(
             cursor,
@@ -106,9 +106,9 @@ def insert_process(connection, process_data):
         )
         connection.commit()
         logging.info(f"{len(process_data)} записей успешно добавлено.")
-    # except Exception as error:
-    #     logging.error(f"Ошибка при вставке данных: {error}")
-    # finally:
+    except Exception as error:
+        logging.error(f"Ошибка при вставке данных insert_process: {error}")
+    finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
@@ -124,7 +124,7 @@ def get_active_processes(connection):
         logging.info(f"Записи: {records}")
         return records
     except Exception as error:
-        logging.error(f"Ошибка при получении данных: {error}")
+        logging.error(f"Ошибка при получении данных get_active_processes: {error}")
         return []
     finally:
         if cursor is not None:
@@ -145,7 +145,7 @@ def update_processes(connection):
         connection.commit()
         logging.info("Записи с статусом TRUE успешно обновлены.")
     except Exception as error:
-        logging.error(f"Ошибка при обновлении данных: {error}")
+        logging.error(f"Ошибка при обновлении данных update_processes: {error}")
     finally:
         if cursor is not None:
             cursor.close()
@@ -154,7 +154,7 @@ def update_processes(connection):
 
 
 def update_positions(connection, min_summ=None, rate=None, disperce=None, status=None, order_filter=None, chat=None, timer=None, num_proc=None):
-    # try:
+    try:
         cursor = connection.cursor()
         update_fields = []
         update_values = []
@@ -193,9 +193,9 @@ def update_positions(connection, min_summ=None, rate=None, disperce=None, status
             logging.info("Записи с статусом TRUE успешно обновлены.")
         else:
             logging.warning("Нет данных для обновления.")
-    # except Exception as error:
-    #     logging.error(f"Ошибка при обновлении данных: {error}")
-    # finally:
+    except Exception as error:
+        logging.error(f"Ошибка при обновлении данных update_positions: {error}")
+    finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
@@ -212,7 +212,7 @@ def get_active_records(connection=create_connection()):
             logging.info(f"Запись: {record}")
         return records
     except Exception as error:
-        logging.error(f"Ошибка при получении данных: {error}")
+        logging.error(f"Ошибка при получении данных get_active_records: {error}")
         return []
     finally:
         if cursor is not None:
@@ -234,7 +234,7 @@ def add_order_filter_column(connection):
         connection.commit()
         logging.info("Столбец order_filter chat num_proc timer успешно добавлен в таблицу clicker.")
     except Exception as error:
-        logging.error(f"Ошибка при добавлении столбца order_filter: {error}")
+        logging.error(f"Ошибка при добавлении столбца order_filter add_order_filter_column: {error}")
 
 
 def update_chat_column_type(connection):
@@ -248,7 +248,7 @@ def update_chat_column_type(connection):
         connection.commit()
         logging.info("Тип поля chat обновлён на BIGINT, другие столбцы успешно добавлены.")
     except Exception as error:
-        logging.error(f"Ошибка при обновлении типа столбца chat или добавлении других столбцов: {error}")
+        logging.error(f"Ошибка при обновлении типа столбца chat или добавлении других столбцов update_chat_column_type: {error}")
 
 
 if __name__ == "__main__":
