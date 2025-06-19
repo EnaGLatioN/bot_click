@@ -156,16 +156,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                 await async_log(f"Получили новый токен: {headers}")
             count = 0
             for res in response.get("items", []):
-                to_time = res.get("maxTimeoutAt")
-                await async_log(f"to_time: {to_time}")
-                api_time = datetime.datetime.fromisoformat(to_time)
-                await async_log(f"api_time: {api_time}")
-                tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
-                now =datetime.datetime.now(tzinfo)
-                threshold_time = api_time + datetime.timedelta(hours=5)
-                await async_log(f"threshold_time: {threshold_time}")
-                await async_log(f"TTTTTIIIIIIIIIIIIIIMEEEEEEEEEEEEEEEEE: {(threshold_time - now).total_seconds() / 60}")
-                if int((threshold_time - now).total_seconds() / 60) < timer:
+                if await to_time(res.get("maxTimeoutAt")) < timer:
                     continue
                 if  await sync_to_async(res.get)("status") == "trader_payment":
                     count += 1
@@ -177,6 +168,18 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
         except Exception as e:
             await async_log(f"Error while processing orders: {e}")
             await asyncio.sleep(1)
+
+
+async def to_time(to_time):
+    await async_log(f"to_time: {to_time}")
+    api_time = datetime.datetime.fromisoformat(to_time)
+    await async_log(f"api_time: {api_time}")
+    tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
+    now = datetime.datetime.now(tzinfo)
+    threshold_time = api_time + datetime.timedelta(hours=5)
+    await async_log(f"threshold_time: {threshold_time}")
+    await async_log(f"TTTTTIIIIIIIIIIIIIIMEEEEEEEEEEEEEEEEE: {(threshold_time - now).total_seconds() / 60}")
+    return (threshold_time - now).total_seconds() / 60
 
 
 def take_rates(rates_url, headers):
