@@ -150,8 +150,8 @@ def take_orders(api_url, headers, curse, order_filter, proxy, timer):
         try:
             response = send_request(api_url, headers, proxy)
             logger.info(f"ЛОТЫ: {response.get('items')}")
-            if response.get('statusCode') == 401:
-                headers = take_tocken()
+            if response.get('statusCode', None) == 401:
+                headers = take_tocken(proxy)
                 logger.info(f"Получили новый токен: {headers}")
             count = 0
             for res in response.get("items", []):
