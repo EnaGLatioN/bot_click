@@ -58,15 +58,26 @@ def create_table(connection):
         logging.error(f"Ошибка при создании таблиц: {error}")
 
 
-def insert_lot(connection=create_connection(), lot_id=None, status=True):
+def insert_lot(lot_id=None, status=None):
+    connection = None
+    cursor = None
     try:
+        connection = create_connection()
         cursor = connection.cursor()
         cursor.execute(
-        """
-            INSERT INTO lots (lot_id, status) VALUES (%s, %s);
-        """, lot_id, status)
-        connection.commit()
-        logging.info(f"Запись с лот айди -- '{lot_id}' успешно добавлена.")
+            "SELECT 1 FROM lots WHERE lot_id = %s;", (lot_id,)
+        )
+        exists = cursor.fetchone()
+
+        if exists:
+            logging.info(f"Лот с лот айди '{lot_id}' уже существует. Вставка отменена.")
+        else:
+            cursor.execute(
+                "INSERT INTO lots (lot_id, status) VALUES (%s, %s);",
+                (lot_id, status)
+            )
+            connection.commit()
+            logging.info(f"Запись с лот айди -- '{lot_id}' успешно добавлена.")
     except Exception as error:
         logging.error(f"Ошибка при вставке данных: {error}")
     finally:

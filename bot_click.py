@@ -163,7 +163,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                     continue
                 elif  await sync_to_async(res.get)("currencyRate") < curse and  await sync_to_async(res.get)("status") != "trader_payment" and count <= order_filter:
                     await async_log(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
-                    await buy(await sync_to_async(res.get)("id"), headers, proxy)
+                    await buy(res.get("id"), headers, proxy)
                     count += 1
         except Exception as e:
             await async_log(f"Error while processing orders: {e}")
@@ -273,7 +273,7 @@ async def buy(id, headers, proxy):
         if await sync_to_async(result.get)("status") == 'trader_payment':
             await async_log(f"Куплен лот с айди:{id}")
             await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
-            await sync_to_async(insert_lot)(lot_id=id)
+            await sync_to_async(insert_lot)(lot_id=id, status=True)
         else:
             await async_log(f"Не купили лот с айди:{id}")
             await sync_to_async(insert_lot)(lot_id=id, status=False)
