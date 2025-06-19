@@ -20,7 +20,7 @@ from db.init_db import (
 )
 
 # TELE_TOCKEN = "8094728804:AAHdXxJZ00MUlCaZaRdiRIv35yYUWtWHkJI"
-
+active_process = None
 bot = telebot.TeleBot(config("TELE_TOCKEN", cast=str))
 proxies = [
     config("PR").format(
@@ -338,6 +338,7 @@ def start_bot(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("proc-start"))
 def start_bot(call: CallbackQuery):
+    global active_process
     processes = int(call.data.replace("proc-start-", ""))
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
