@@ -68,7 +68,6 @@ def insert_lot(lot_id=None, status=None):
             "SELECT 1 FROM lots WHERE lot_id = %s;", (lot_id,)
         )
         exists = cursor.fetchone()
-
         if exists:
             logging.info(f"Лот с лот айди '{lot_id}' уже существует. Вставка отменена.")
         else:

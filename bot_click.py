@@ -288,15 +288,11 @@ async def main(args):
     if not headers:
         await async_log("No token. Exiting.")
         return
-    async with aiohttp.ClientSession() as session:
-        pr = list(proxies)
-        tasks = []
-        for i in range(min(len(pr), args.processes)):
-            proxy = pr[i]
-            await async_log(f"Прокси запущен в работу :{pr[i]}")
-            tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
-                                 int(args.order_filter), proxy, args.timer))
-        await asyncio.gather(*tasks)
+    tasks = []
+    await async_log(f"Прокси запущен в работу :{args.proxy}")
+    tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
+                         int(args.order_filter), args.proxy, args.timer))
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
@@ -306,4 +302,6 @@ if __name__ == "__main__":
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
+    parser.add_argument("--proxy", type=str, help="Таймер заявки.")
+
     asyncio.run(main(parser.parse_args()))

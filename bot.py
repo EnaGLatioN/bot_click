@@ -2,6 +2,7 @@ import logging
 import subprocess
 import os
 import signal
+import time
 
 import telebot
 from telebot.types import ReplyKeyboardRemove, CallbackQuery
@@ -352,22 +353,26 @@ def start_bot(call: CallbackQuery):
         #TODO добавь тут процессы
         #"docker","exec","-it","clicker1",
         with open("bot.log", "a") as log_file:
-            active_process = subprocess.Popen(
-                ["poetry", "run", "python", "bot_click.py",
-                 "--rate", str(record.get("disperce")),
-                 "--min_summ", str(record.get("min_summ")),
-                 "--processes", str(processes),
-                 "--order_filter", str(record.get("order_filter")),
-                 "--timer", str(record.get("timer"))],
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                text=True
-            )
-            records_to_insert.append((
-                f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
-                active_process.pid
-            ))
-            logging.info(f"Процесс запущен.---- {active_process.pid}")
+            for i in range(min(len(proxies), processes)):
+                time.sleep(0.100)
+                active_process = subprocess.Popen(
+                    ["poetry", "run", "python", "bot_click.py",
+                     "--rate", str(record.get("disperce")),
+                     "--min_summ", str(record.get("min_summ")),
+                     "--processes", str(processes),
+                     "--order_filter", str(record.get("order_filter")),
+                     "--timer", str(record.get("timer")),
+                     "--proxy", str(proxies[i])
+                     ],
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    text=True
+                )
+                records_to_insert.append((
+                    f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
+                    active_process.pid
+                ))
+                logging.info(f"Процесс запущен.---- {active_process.pid}")
         insert_process(create_connection(), records_to_insert)
         keyboard.row(
             telebot.types.InlineKeyboardButton(
