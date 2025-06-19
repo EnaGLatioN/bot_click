@@ -56,11 +56,6 @@ def create_table(connection):
         logging.info("Таблица clicker и processes успешно созданы.")
     except Exception as error:
         logging.error(f"Ошибка при создании таблиц: {error}")
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if connection is not None:
-            connection.close()
 
 
 def insert_lot(connection=create_connection(), lot_id=None, status=True):
@@ -241,10 +236,24 @@ def add_order_filter_column(connection):
     except Exception as error:
         logging.error(f"Ошибка при добавлении столбца order_filter: {error}")
 
+def update_chat_column_type(connection):
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            ALTER TABLE clicker
+            ALTER COLUMN chat SET DATA TYPE BIGINT;
+        """)
+        connection.commit()
+        logging.info("Тип поля chat обновлён на BIGINT, другие столбцы успешно добавлены.")
+    except Exception as error:
+        logging.error(f"Ошибка при обновлении типа столбца chat или добавлении других столбцов update_chat_column_type: {error}")
+
 
 if __name__ == "__main__":
     conn = create_connection()
     if conn:
         add_order_filter_column(conn)
+        update_chat_column_type(conn)
         create_table(conn)
         conn.close()
