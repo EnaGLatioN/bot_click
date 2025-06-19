@@ -151,7 +151,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
         try:
             response = await send_request(api_url, headers, proxy)
             await async_log(f"ЛОТЫ: {response}")
-            if await response.get('statusCode') == 401:
+            if response.get('statusCode') == 401:
                 headers = await take_tocken(proxy)
                 await async_log(f"Получили новый токен: {headers}")
             count = 0
