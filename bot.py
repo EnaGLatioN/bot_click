@@ -111,7 +111,9 @@ def start_bot(call: CallbackQuery):
 def callback_inline(call: CallbackQuery):
     rate = float(call.data.replace("take-rates-", ""))
     logging.info(f"))))))))))))))))))))))))))))0--{rate}")
-    chat_id = call.message.chat.id
+    chat_id = int(call.message.chat.id)
+    logging.info(f"111111111111111111111111111--{chat_id}")
+
     if not get_active_records(connection=create_connection()):
         insert_positions(
             connection=create_connection(),
