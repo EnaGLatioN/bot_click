@@ -156,8 +156,8 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                 await async_log(f"Получили новый токен: {headers}")
             count = 0
             for res in response.get("items", []):
-                if await to_time(res.get("maxTimeoutAt")) < timer:
-                    continue
+                # if await to_time(res.get("maxTimeoutAt")) < timer:
+                #     continue
                 if  await sync_to_async(res.get)("status") == "trader_payment":
                     count += 1
                     continue
