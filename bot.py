@@ -20,7 +20,6 @@ from db.init_db import (
 )
 
 # TELE_TOCKEN = "8094728804:AAHdXxJZ00MUlCaZaRdiRIv35yYUWtWHkJI"
-active_process = None
 bot = telebot.TeleBot(config("TELE_TOCKEN", cast=str))
 proxies = [
     config("PR").format(
@@ -338,7 +337,6 @@ def start_bot(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("proc-start"))
 def start_bot(call: CallbackQuery):
-    global active_process
     processes = int(call.data.replace("proc-start-", ""))
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
@@ -364,7 +362,6 @@ def start_bot(call: CallbackQuery):
             stderr=subprocess.PIPE,
             text=True
         )
-        logging.error(active_process)
         records_to_insert.append((
             f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))} --timer {str(record.get('timer'))}",
             active_process.pid
