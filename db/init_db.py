@@ -82,7 +82,7 @@ def insert_lot(connection=create_connection(), lot_id=None, status=True):
 
 
 def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=None, status=None):
-    try:
+    # try:
         cursor = connection.cursor()
         cursor.execute(
         """
@@ -90,9 +90,9 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
         """, (min_summ, rate, disperce, chat))
         connection.commit()
         logging.info(f"Запись с минимальной суммой '{min_summ}' успешно добавлена.")
-    except Exception as error:
-        logging.error(f"Ошибка при вставке данных: {error}")
-    finally:
+    # except Exception as error:
+    #     logging.error(f"Ошибка при вставке данных: {error}")
+    # finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
@@ -100,7 +100,7 @@ def insert_positions(connection, min_summ=None, rate=None, disperce=None, chat=N
 
 
 def insert_process(connection, process_data):
-    try:
+    # try:
         cursor = connection.cursor()
         execute_values(
             cursor,
@@ -111,9 +111,9 @@ def insert_process(connection, process_data):
         )
         connection.commit()
         logging.info(f"{len(process_data)} записей успешно добавлено.")
-    except Exception as error:
-        logging.error(f"Ошибка при вставке данных: {error}")
-    finally:
+    # except Exception as error:
+    #     logging.error(f"Ошибка при вставке данных: {error}")
+    # finally:
         if cursor is not None:
             cursor.close()
         if connection is not None:
