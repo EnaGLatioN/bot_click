@@ -349,19 +349,19 @@ def start_bot(call: CallbackQuery):
         logging.error("DDDDDDDDDDDDDDDDDD")
         logging.error(record)
         #TODO добавь тут процессы
-        active_process = subprocess.Popen(
-            ["poetry", "run", "python", "bot_click.py",
-             "--rate", str(record.get("disperce")),
-             "--min_summ", str(record.get("min_summ")),
-             "--processes", str(processes),
-             "--order_filter", str(record.get("order_filter")),
-             "--timer", str(record.get("timer")),
-             "--proxy", str(proxies[processes]),
-             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+        with open("bot.log", "a") as log_file:
+            active_process = subprocess.Popen(
+                ["poetry", "run", "python", "bot_click.py",
+                 "--rate", str(record.get("disperce")),
+                 "--min_summ", str(record.get("min_summ")),
+                 "--processes", str(processes),
+                 "--order_filter", str(record.get("order_filter")),
+                 "--timer", str(record.get("timer")),
+                 "--proxy", str(proxies[processes])],
+                stdout=log_file,  # Перенаправляем stdout в файл
+                stderr=subprocess.STDOUT,  # Перенаправляем stderr в тот же файл
+                text=True
+            )
         records_to_insert.append((
             f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))} --timer {str(record.get('timer'))}",
             active_process.pid

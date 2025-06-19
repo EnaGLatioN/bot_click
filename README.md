@@ -26,7 +26,7 @@ make up
 docker exec -it clicker1 poetry run python -m bot_click
 главное учесть номер кликера в примере первый всего их 5
 это что бы запустить бота
-
+docker exec -it clicker1 poetry run python bot_click.py --rate 78.93970084 --min_summ 100000 --processes 2 --order_filter 2 --timer 100 --proxy http://45.150.112.121:63248
 logs
 docker exec -it clicker1 tail -f /application/bot.log
 PR_USER="FdFEQnka"

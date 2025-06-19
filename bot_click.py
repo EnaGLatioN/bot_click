@@ -10,19 +10,6 @@ import requests
 from requests.auth import HTTPProxyAuth
 import logging
 
-# def configure_logger(process_id):
-#     logger = logging.getLogger(f"my_bot_{process_id}")
-#     logger.setLevel(logging.DEBUG)
-#     log_filename = f"bot_{process_id}.log"
-#     file_handler = logging.FileHandler(log_filename)
-#     file_handler.setLevel(logging.DEBUG)
-#
-#     file_logger_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-#     file_handler.setFormatter(file_logger_format)
-#
-#     logger.addHandler(file_handler)
-#     return logger
-
 
 logger = logging.getLogger("my_bot")
 logger.setLevel(logging.DEBUG)
@@ -91,31 +78,6 @@ def authenticate_and_get_token(auth_url, payload, proxy=None):
     return None
 
 
-# async def send_request(api_url, headers, proxy):
-#     import requests
-#     await sync_to_async(logger.info)(f"Отправляем запрос  --:{api_url, headers, proxy}")
-#     try:
-#         await sync_to_async(logger.info)(f"auth tut")
-#         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
-#         await sync_to_async(logger.info)(f"auth tut -- {auth}")
-#         prox = await sync_to_async(dict)()
-#         await sync_to_async(logger.info)(f"proxproxproxprox-- {prox}")
-#         prox['http'] = proxy
-#         await sync_to_async(logger.info)(f"responseresponseresponseresponse")
-#         response = await asyncio.wait_for(
-#             sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth),
-#             timeout=2
-#         )
-#         await sync_to_async(logger.info)(f"!!!!!!!!!!responseresponseresponseresponse -- {response}")
-#
-#         #response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
-#         await sync_to_async(logger.info)(f"Ответ --:{response}")
-#         await sync_to_async(response.raise_for_status)()
-#         return await sync_to_async(response.json)()
-#     except Exception as e:
-#         await sync_to_async(logger.info)(f"HTTP error occurred: {e} - Proxy: {proxy}")
-#     return None
-
 def send_request(api_url, headers, proxy):
     import requests
     logger.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
@@ -125,7 +87,6 @@ def send_request(api_url, headers, proxy):
         prox['http'] = proxy
         response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
         logger.info(f"Ответ --:{response}")
-        #response.raise_for_status()
         return response.json()
     except Exception as e:
         logger.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
