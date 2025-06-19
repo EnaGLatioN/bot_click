@@ -149,38 +149,41 @@ def take_orders(api_url, headers, curse, order_filter, proxy, timer):
     while True:
         try:
             response = send_request(api_url, headers, proxy)
-            logger.info(f"ЛОТЫ: {response.get('items')}")
+            logger.info(f"ЛОТЫ: {response}")
             if response.get('statusCode', None) == 401:
                 headers = take_tocken(proxy)
                 logger.info(f"Получили новый токен: {headers}")
             count = 0
             logger.info(f"ДОШЛИ ДО ЦИКЛА")
             for res in response.get("items", []):
-                try:
-                    to_time = res.get("maxTimeoutAt")
-                    logger.info(f"to_timeto_time: {to_time}")
-                    api_time = datetime.datetime.fromisoformat(to_time)
-                    logger.info(f"api_timeapi_time: {api_time}")
-                    timer_at =  datetime.timedelta(minutes=-int(timer))
-                    logger.info(f"timer_attimer_at: {timer_at}")
-                    api_time = api_time - timer_at
-                    tzinfo =  datetime.timezone(datetime.timedelta(hours=5.0))
-                    logger.info(f"tzinfotzinfo: {tzinfo}")
-                    now = datetime.datetime.now(tzinfo)
-                    if api_time < now:
-                        continue
-                except Exception as e:
-                    logger.info(f"Что то со временем -- {e}")
-
+                api_time, now = time_to_time(timer, res)
                 if  res.get("status") == "trader_payment":
                     count += 1
                     continue
-                elif  res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter:
+                elif  res.get("currencyRate") < curse and res.get("status") != "trader_payment" and count <= order_filter and api_time > now:
                     logger.info(f"Покупаем: {res.get("currencyRate")}")
                     buy(res.get("id"), headers)
                     count += 1
         except Exception as e:
             logger.info(f"Error while processing orders: {e}")
+
+
+def time_to_time(timer, res):
+    try:
+        to_time = res.get("maxTimeoutAt")
+        logger.info(f"to_timeto_time: {to_time}")
+        api_time = datetime.datetime.fromisoformat(to_time)
+        logger.info(f"api_timeapi_time: {api_time}")
+        timer_at = datetime.timedelta(minutes=-int(timer))
+        logger.info(f"timer_attimer_at: {timer_at}")
+        api_time = api_time - timer_at
+        tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
+        logger.info(f"tzinfotzinfo: {tzinfo}")
+        now = datetime.datetime.now(tzinfo)
+        return api_time, now
+    except Exception as e:
+        logger.info(f"Что то со временем: {e}")
+        return None, None
 
 
 def create_encoded_json(filter_int):
