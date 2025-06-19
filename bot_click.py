@@ -125,7 +125,7 @@ def send_request(api_url, headers, proxy):
         prox['http'] = proxy
         response = requests.get(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
         logger.info(f"Ответ --:{response}")
-        response.raise_for_status()
+        #response.raise_for_status()
         return response.json()
     except Exception as e:
         logger.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
@@ -154,19 +154,24 @@ def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                 headers = take_tocken(proxy)
                 logger.info(f"Получили новый токен: {headers}")
             count = 0
+            logger.info(f"ДОШЛИ ДО ЦИКЛА")
             for res in response.get("items", []):
-                to_time = res.get("maxTimeoutAt")
-                logger.info(f"to_timeto_time: {to_time}")
-                api_time = datetime.datetime.fromisoformat(to_time)
-                logger.info(f"api_timeapi_time: {api_time}")
-                timer_at =  datetime.timedelta(minutes=-int(timer))
-                logger.info(f"timer_attimer_at: {timer_at}")
-                api_time = api_time - timer_at
-                tzinfo =  datetime.timezone(datetime.timedelta(hours=5.0))
-                logger.info(f"tzinfotzinfo: {tzinfo}")
-                now = datetime.datetime.now(tzinfo)
-                if api_time < now:
-                    continue
+                try:
+                    to_time = res.get("maxTimeoutAt")
+                    logger.info(f"to_timeto_time: {to_time}")
+                    api_time = datetime.datetime.fromisoformat(to_time)
+                    logger.info(f"api_timeapi_time: {api_time}")
+                    timer_at =  datetime.timedelta(minutes=-int(timer))
+                    logger.info(f"timer_attimer_at: {timer_at}")
+                    api_time = api_time - timer_at
+                    tzinfo =  datetime.timezone(datetime.timedelta(hours=5.0))
+                    logger.info(f"tzinfotzinfo: {tzinfo}")
+                    now = datetime.datetime.now(tzinfo)
+                    if api_time < now:
+                        continue
+                except Exception as e:
+                    logger.info(f"Что то со временем -- {e}")
+
                 if  res.get("status") == "trader_payment":
                     count += 1
                     continue
@@ -253,15 +258,19 @@ def buy(id, headers):
 
 
 def main(args):
-    logger.info("АРГУМЕНТЫ СТАРТА БОТА")
-    logger.info(args)
-    headers = take_tocken(args.proxy)
-    if not headers:
-        logger.info("No token. Exiting.")
-        return
-    logger.info(f"Прокси запущен в работу :{args.proxy}")
-    take_orders(create_encoded_json(args.min_summ), headers, float(args.rate),int(args.order_filter), args.proxy, args.timer)
-
+    while True:
+        try:
+            logger.info("АРГУМЕНТЫ СТАРТА БОТА")
+            logger.info(args)
+            headers = take_tocken(args.proxy)
+            if not headers:
+                logger.info("No token. Exiting.")
+                return
+            logger.info(f"Прокси запущен в работу :{args.proxy}")
+            take_orders(create_encoded_json(args.min_summ), headers, float(args.rate),int(args.order_filter), args.proxy, args.timer)
+        except Exception as e:
+            logger.info(f"Что то с мэйн -- :{e}")
+            continue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Description of your script.")
