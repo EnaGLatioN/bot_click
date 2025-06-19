@@ -119,7 +119,7 @@ async def send_request(api_url, headers, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
+        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=1.0)
         await async_log(f"Ответ --:{response}")
         return await sync_to_async(response.json)()
     except Exception as e:
