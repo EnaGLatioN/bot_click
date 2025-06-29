@@ -84,16 +84,23 @@ async def send_request(api_url, headers, proxy):
     return None
 
 
-async def take_tocken(proxy=None):
+async def take_tocken(proxy=None, email=None, password=None):
+    auth_payload = AUTH_PAYLOAD
+    if (email and password) is not None:
+        auth_payload = {
+            "email": email,
+            "password": password
+        }
     if proxy is None:
-        token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD)
+        token = await authenticate_and_get_token(AUTH_URL, auth_payload)
     else:
-        token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD, proxy)
+        token = await authenticate_and_get_token(AUTH_URL, auth_payload, proxy)
     if token:
         logging.info(f"Authorization: f'Bearer {token}'")
         return {"Authorization": f"Bearer {token}"}
     logging.info("Failed to authenticate.")
     return None
+
 
 
 async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
@@ -214,10 +221,9 @@ def fix_filter(selected_filter):
 async def buy(id, headers, proxy):
     import requests
     try:
-        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.post)(url=ACCEPT_URL.format(id), headers=headers, proxies=prox, auth=auth)
+        response = await sync_to_async(requests.post)(url=ACCEPT_URL.format(id), headers=headers, proxies=prox, auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
         logging.info(f"ПРИШЛИ ПОКУПАТЬ:{id}")
         result = await sync_to_async(response.json)()
         logging.info(f"ПРИШЛИ ПОКУПАТЬ И ПРИШЕЛ ОТВЕТ:{result}")
@@ -235,15 +241,13 @@ async def buy(id, headers, proxy):
 async def main(args):
     logging.info("АРГУМЕНТЫ СТАРТА БОТА")
     logging.info(args)
-    headers = await take_tocken()
+    headers = await take_tocken(args.proxy, args.email, args.password)
     if not headers:
         logging.info("No token. Exiting.")
         return
-    tasks = []
     logging.info(f"Прокси запущен в работу :{args.proxy}")
-    tasks.append(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
+    await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
                          int(args.order_filter), args.proxy, args.timer))
-    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
@@ -254,5 +258,6 @@ if __name__ == "__main__":
     parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
     parser.add_argument("--timer", type=int, help="Таймер заявки.")
     parser.add_argument("--proxy", type=str, help="Таймер заявки.")
-
+    parser.add_argument("--email", type=str, help="email")
+    parser.add_argument("--password", type=str, help="password")
     asyncio.run(main(parser.parse_args()))

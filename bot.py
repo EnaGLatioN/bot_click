@@ -69,6 +69,48 @@ proxies = [
         port=config("PR_PORT10")
     ),
 ]
+AUTHS = [
+    {
+        "email":config("MAIL"),
+        "password":config("PASSWORD")
+    },
+    {
+        "email": config("MAIL1"),
+        "password": config("PASSWORD1")
+    },
+    {
+        "email": config("MAIL2"),
+        "password": config("PASSWORD2")
+    },
+    {
+        "email": config("MAIL3"),
+        "password": config("PASSWORD3")
+    },
+    {
+        "email": config("MAIL4"),
+        "password": config("PASSWORD4")
+    },
+    {
+        "email": config("MAIL5"),
+        "password": config("PASSWORD5")
+    },
+    {
+        "email": config("MAIL6"),
+        "password": config("PASSWORD6")
+    },
+    {
+        "email": config("MAIL7"),
+        "password": config("PASSWORD7")
+    },
+    {
+        "email": config("MAIL8"),
+        "password": config("PASSWORD8")
+    },
+    {
+        "email": config("MAIL9"),
+        "password": config("PASSWORD9")
+    },
+]
 
 @bot.message_handler(commands=['start',])
 def send_welcome(message):
@@ -348,10 +390,6 @@ def start_bot(call: CallbackQuery):
             record = get_active_records(create_connection())[0]
         else:
             logging.error("В базе больше одной активной записи.")
-        print("DDDDDDDDDDDDDDDDDD")
-        print(record)
-        #TODO добавь тут процессы
-        #"docker","exec","-it","clicker1",
         with open("bot.log", "a") as log_file:
             for i in range(min(len(proxies), processes)):
                 time.sleep(0.100)
@@ -362,14 +400,22 @@ def start_bot(call: CallbackQuery):
                      "--processes", str(processes),
                      "--order_filter", str(record.get("order_filter")),
                      "--timer", str(record.get("timer")),
-                     "--proxy", str(proxies[i])
+                     "--proxy", str(proxies[i]),
+                     "--email", str(AUTHS[i].get("email", None)),
+                     "--password", str(AUTHS[i].get("password", None)),
                      ],
                     stdout=log_file,
-                    stderr=subprocess.STDOUT,
+                    stderr=log_file,
                     text=True
                 )
                 records_to_insert.append((
-                    f"poetry run python bot_click.py --rate {str(record.get('disperce'))} --min_summ {str(record.get('min_summ'))} --processes {str(processes)} --order_filter {str(record.get('order_filter'))}",
+                    f"poetry run python bot_click.py "
+                    f"--rate {str(record.get('disperce'))} "
+                    f"--min_summ {str(record.get('min_summ'))} "
+                    f"--processes {str(processes)} "
+                    f"--order_filter {str(record.get('order_filter'))}"
+                    f"--email {str(record.get('email'))}"
+                    f"--password {str(record.get('password'))}",
                     active_process.pid
                 ))
                 logging.info(f"Процесс запущен.---- {active_process.pid}")
@@ -393,7 +439,6 @@ def start_bot(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data == "finish-parse")
 def start_bot(call: CallbackQuery):
-    active_processes = call.data.replace("proc-start-", "")
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.row(
         telebot.types.InlineKeyboardButton(
@@ -438,17 +483,13 @@ def start_bot(call: CallbackQuery):
 @bot.message_handler(content_types=['text'])
 def take_min_amount(message):
     summa = int(message.json.get("text")) if message.json.get("text").isdigit() else None
-    print("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")
-    print(summa)
     if summa is None:
-        print("GHGHGHGHGHGHGHGHHGG")
         bot.send_message(
             chat_id=message.from_user.id,
             text=f"Неверный формат данных, попробуй ещё раз",
             reply_markup=ReplyKeyboardRemove()
         )
     if (summa >= 1000) and (summa is not None):
-        print("YAYAYAYAYYAYAYAY")
         update_positions(
             connection=create_connection(),
             min_summ=int(message.json.get("text")),
@@ -478,8 +519,6 @@ def take_min_amount(message):
         return
 
     if (summa < 1000) and (summa is not None):
-        print("HHHHHHHHHHHHHHHHHHHH")
-        print("LOOLOLOLLOOLOLOLLOOLOL")
         active = get_active_records(connection=create_connection())
         keyboard = telebot.types.InlineKeyboardMarkup()
         update_positions(connection=create_connection(), timer=int(message.json.get("text")))
