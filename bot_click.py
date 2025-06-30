@@ -108,7 +108,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
-            logging.info(f"ЛОТЫ: {response}")
+            logging.info(f"ЛОТЫ: {len(response.get('items'))}")
             if response.get('statusCode', None) == 401:
                 headers = await take_tocken(proxy)
                 logging.info(f"Получили новый токен: {headers}")
@@ -119,7 +119,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                 if  await sync_to_async(res.get)("status") == "trader_payment":
                     count += 1
                     continue
-                elif  await sync_to_async(res.get)("currencyRate") < curse and  await sync_to_async(res.get)("status") != "trader_payment" and count <= order_filter:
+                if await sync_to_async(res.get)("currencyRate") < curse and count <= order_filter:
                     logging.info(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
                     await buy(res.get("id"), headers, proxy)
                     count += 1
