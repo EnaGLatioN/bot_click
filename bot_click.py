@@ -5,7 +5,7 @@ import argparse
 import datetime
 import urllib.parse
 from asgiref.sync import sync_to_async
-from db.init_db import insert_lot, get_active_records
+from db.init_db import insert_lot, get_active_records, insert_tocken, update_token, get_token
 from decouple import config
 import logging
 from requests.auth import HTTPProxyAuth
@@ -76,8 +76,7 @@ async def send_request(api_url, headers, proxy):
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=1.0)
-        logging.info(f"Ответ --:{response}")
+        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
         return await sync_to_async(response.json)()
     except Exception as e:
         logging.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
@@ -86,6 +85,13 @@ async def send_request(api_url, headers, proxy):
 
 async def take_tocken(proxy=None, email=None, password=None):
     auth_payload = AUTH_PAYLOAD
+    if email == "skotradde@gmail.com":
+        token = await authenticate_and_get_token(AUTH_URL, auth_payload)
+        if not await sync_to_async(get_token)():
+            await sync_to_async(insert_tocken)(token)
+        else:
+            await sync_to_async(update_token)(token)
+        return {"Authorization": f"Bearer {token}"}
     if (email and password) is not None:
         auth_payload = {
             "email": email,
@@ -103,14 +109,14 @@ async def take_tocken(proxy=None, email=None, password=None):
 
 
 
-async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
+async def take_orders(api_url, headers, curse, order_filter, proxy, timer, email, password):
     logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
             logging.info(f"ЛОТЫ: {len(response.get('items'))}")
             if response.get('statusCode', None) == 401:
-                headers = await take_tocken(proxy)
+                headers = await take_tocken(proxy, email, password)
                 logging.info(f"Получили новый токен: {headers}")
             count = 0
             for res in response.get("items", []):
@@ -121,7 +127,7 @@ async def take_orders(api_url, headers, curse, order_filter, proxy, timer):
                     continue
                 if await sync_to_async(res.get)("currencyRate") < curse and count <= order_filter:
                     logging.info(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
-                    await buy(res.get("id"), headers, proxy)
+                    await buy(res.get("id"), proxy)
                     count += 1
         except Exception as e:
             logging.info(f"Error while processing orders: {e}")
@@ -218,9 +224,10 @@ def fix_filter(selected_filter):
     return None
 
 
-async def buy(id, headers, proxy):
+async def buy(id, proxy):
     import requests
     try:
+        headers = {"Authorization": f"Bearer {await sync_to_async(get_token)()}"}
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
         response = await sync_to_async(requests.post)(url=ACCEPT_URL.format(id), headers=headers, proxies=prox, auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
@@ -247,7 +254,7 @@ async def main(args):
         return
     logging.info(f"Прокси запущен в работу :{args.proxy}")
     await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
-                         int(args.order_filter), args.proxy, args.timer))
+                         int(args.order_filter), args.proxy, args.timer, args.email, args.password))
 
 
 if __name__ == "__main__":
