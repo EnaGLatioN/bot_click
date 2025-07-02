@@ -112,7 +112,7 @@ async def take_orders(api_url, curse, order_filter, proxy, timer, email, passwor
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
-            logging.info(f"ЛОТЫ: {len(response.get('items'))}")
+            logging.info(f"ЛОТЫ: {response.get('items')}")
             if response.get('statusCode', None) == 401:
                 headers = await take_tocken(proxy, email, password)
                 logging.info(f"NNNNNNNNNNNNNNNNNEEEEEEEEEEEEEWWWWWWWWWWWWW TTTTTTTTTTOOOOOOOKKKKKKEEENNNN: {headers}")
@@ -124,7 +124,6 @@ async def take_orders(api_url, curse, order_filter, proxy, timer, email, passwor
                     count += 1
                     continue
                 if await sync_to_async(res.get)("currencyRate") < curse and count <= order_filter:
-                    logging.info(f"Покупаем: {await sync_to_async(res.get)("currencyRate")}")
                     await buy(res.get("id"), proxy)
                     count += 1
         except Exception as e:
@@ -229,7 +228,6 @@ async def buy(id, proxy):
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
         response = await sync_to_async(requests.post)(url=ACCEPT_URL.format(id), headers=headers, proxies=prox, auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
-        logging.info(f"ПРИШЛИ ПОКУПАТЬ:{id}")
         result = await sync_to_async(response.json)()
         logging.info(f"ПРИШЛИ ПОКУПАТЬ И ПРИШЕЛ ОТВЕТ:{result}")
         if await sync_to_async(result.get)("status") == 'trader_payment':
