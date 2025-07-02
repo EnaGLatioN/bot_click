@@ -1,16 +1,16 @@
 import base64
+import logging
 import asyncio
 import aiohttp
 import requests
 import argparse
 import datetime
+
 import urllib.parse
 from asgiref.sync import sync_to_async
 from db.init_db import insert_lot, get_active_records, insert_tocken, update_token, get_token
 from decouple import config
-import logging
 from requests.auth import HTTPProxyAuth
-
 
 
 AUTH_URL = config("AUTH_URL", cast=str)
@@ -18,7 +18,6 @@ AUTH_PAYLOAD = {
     "email": config("MAIL", cast=str),
     "password": config("PASSWORD", cast=str)
 }
-
 API_URL = config("API_URL", cast=str)
 ORDER_URL = config("ORDER_URL", cast=str)
 
@@ -37,74 +36,62 @@ TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
 async def send_telegram_message(message):
     async with aiohttp.ClientSession() as session:
-        telegram_url = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage'
         chat = await sync_to_async(get_active_records)()
         payload = {
             'chat_id': chat[0].get("chat"),
             'text': message
         }
-        async with session.post(telegram_url, json=payload) as response:
+        async with session.post(f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage', json=payload) as response:
             if response.status != 200:
                 logging.info(f"Ошибка отправки уведомления: {await response.text()}")
 
 
-async def authenticate_and_get_token(auth_url, payload, proxy=None):
+async def authenticate_and_get_token(auth_url, payload, proxy):
     logging.info(f"Получаем токен --:{auth_url, payload, proxy}")
     try:
-        if proxy is None:
-            response = await sync_to_async(requests.post)(url=auth_url, json=payload)
-            data = await sync_to_async(response.json)()
-            logging.info(f"Получение токена --:{data.get('accessToken')}")
-            return data.get('accessToken')
-        else:
-            auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
-            prox = await sync_to_async(dict)()
-            prox['http'] = proxy
-            response = await sync_to_async(requests.post)(url=auth_url,json=payload, proxies=prox, auth=auth)
-            data = await sync_to_async(response.json)()
-            logging.info(f"Получение токена --:{data.get('accessToken')}")
-            return data.get('accessToken')
+        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+        prox = await sync_to_async(dict)()
+        prox['http'] = proxy
+        response = await sync_to_async(requests.post)(url=auth_url,json=payload, proxies=prox, auth=auth)
+        data = await sync_to_async(response.json)()
+        return data.get('accessToken')
     except aiohttp.ClientError as e:
         logging.info(f"HTTP error during authentication: {e}")
-
 
 
 async def send_request(api_url, headers, proxy):
     logging.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
-        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
+        response = await sync_to_async(requests.get)(
+            url=api_url,
+            headers=headers,
+            proxies=prox,
+            auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
         return await sync_to_async(response.json)()
     except Exception as e:
         logging.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
-    return None
 
 
-async def take_tocken(proxy, email=None, password=None):
-    auth_payload = AUTH_PAYLOAD
+
+async def take_tocken(proxy, email, password):
     if email == "skotradde@gmail.com":
-        token = await authenticate_and_get_token(AUTH_URL, auth_payload)
+        token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD, proxy)
         if not await sync_to_async(get_token)():
             await sync_to_async(insert_tocken)(token)
         else:
             await sync_to_async(update_token)(token)
         return {"Authorization": f"Bearer {token}"}
-    if (email is not None) and (email != "skotradde@gmail.com"):
-        auth_payload = {
-            "email": email,
-            "password": password
-        }
-        token = await authenticate_and_get_token(AUTH_URL, auth_payload, proxy)
-        logging.info(f"Authorization: f'Bearer {token}'")
-        return {"Authorization": f"Bearer {token}"}
-    logging.info("Failed to authenticate.")
-    return None
+    auth_payload = {
+        "email": email,
+        "password": password
+    }
+    token = await authenticate_and_get_token(AUTH_URL, auth_payload, proxy)
+    return {"Authorization": f"Bearer {token}"}
 
 
-
-async def take_orders(api_url, curse, order_filter, proxy, timer, email, password):
+async def take_orders(api_url, curse, order_filter, proxy, email, password):
     headers = await take_tocken(proxy, email, password)
     logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
     if not headers:
@@ -118,14 +105,11 @@ async def take_orders(api_url, curse, order_filter, proxy, timer, email, passwor
                 logging.info(f"NNNNNNNNNNNNNNNNNEEEEEEEEEEEEEWWWWWWWWWWWWW TTTTTTTTTTOOOOOOOKKKKKKEEENNNN: {headers}")
             count = 0
             for res in response.get("items", []):
-                # if await to_time(res.get("maxTimeoutAt")) < timer:
-                #     continue
                 if  await sync_to_async(res.get)("status") == "trader_payment":
                     count += 1
                     continue
-                if await sync_to_async(res.get)("currencyRate") < curse and count <= order_filter:
+                if res.get("currencyRate") <= curse and count <= order_filter:
                     await buy(res.get("id"), proxy)
-                    count += 1
         except Exception as e:
             logging.info(f"Error while processing orders: {e}")
             await asyncio.sleep(1)
@@ -224,13 +208,17 @@ def fix_filter(selected_filter):
 async def buy(id, proxy):
     import requests
     try:
-        headers = {"Authorization": f"Bearer {await sync_to_async(get_token)()}"}
-        prox = await sync_to_async(dict)()
-        prox['http'] = proxy
-        response = await sync_to_async(requests.post)(url=ACCEPT_URL.format(id), headers=headers, proxies=prox, auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
+        # prox = await sync_to_async(dict)()
+        # prox['http'] = proxy
+        response = await sync_to_async(requests.post)(
+            url=ACCEPT_URL.format(id),
+            headers={"Authorization": f"Bearer {await sync_to_async(get_token)()}"},
+            # proxies=prox,
+            # auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+        )
         result = await sync_to_async(response.json)()
         logging.info(f"ПРИШЛИ ПОКУПАТЬ И ПРИШЕЛ ОТВЕТ:{result}")
-        if await sync_to_async(result.get)("status") == 'trader_payment':
+        if result.get("status") == 'trader_payment':
             logging.info(f"Куплен лот с айди:{id}")
             await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
             await sync_to_async(insert_lot)(lot_id=id, status=True)
@@ -242,9 +230,9 @@ async def buy(id, proxy):
 
 
 async def main(args):
-    logging.info("АРГУМЕНТЫ СТАРТА БОТА",args)
+    logging.info(f"АРГУМЕНТЫ СТАРТА БОТА--{args}")
     await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), float(args.rate),
-                         int(args.order_filter), args.proxy, args.timer, args.email, args.password))
+                         int(args.order_filter), args.proxy, args.email, args.password))
 
 
 if __name__ == "__main__":
