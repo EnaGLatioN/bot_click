@@ -115,7 +115,7 @@ async def take_orders(api_url, curse, order_filter, proxy, timer, email, passwor
             logging.info(f"ЛОТЫ: {len(response.get('items'))}")
             if response.get('statusCode', None) == 401:
                 headers = await take_tocken(proxy, email, password)
-                logging.info(f"Получили новый токен: {headers}")
+                logging.info(f"NNNNNNNNNNNNNNNNNEEEEEEEEEEEEEWWWWWWWWWWWWW TTTTTTTTTTOOOOOOOKKKKKKEEENNNN: {headers}")
             count = 0
             for res in response.get("items", []):
                 # if await to_time(res.get("maxTimeoutAt")) < timer:
