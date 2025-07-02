@@ -105,9 +105,9 @@ async def take_tocken(proxy, email=None, password=None):
 
 
 
-async def take_orders(api_url, headers, curse, order_filter, proxy, timer, email, password):
-    logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
+async def take_orders(api_url, curse, order_filter, proxy, timer, email, password):
     headers = await take_tocken(proxy, email, password)
+    logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
     if not headers:
         logging.info("No token. Exiting.")
     while True:
