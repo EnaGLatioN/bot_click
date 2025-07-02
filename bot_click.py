@@ -112,7 +112,7 @@ async def take_orders(api_url, curse, order_filter, proxy, email, password):
                     await buy(res.get("id"), proxy)
         except Exception as e:
             logging.info(f"Error while processing orders: {e}")
-            await asyncio.sleep(1)
+            continue
 
 
 async def to_time(to_time):
@@ -206,15 +206,10 @@ def fix_filter(selected_filter):
 
 
 async def buy(id, proxy):
-    import requests
     try:
-        # prox = await sync_to_async(dict)()
-        # prox['http'] = proxy
         response = await sync_to_async(requests.post)(
             url=ACCEPT_URL.format(id),
             headers={"Authorization": f"Bearer {await sync_to_async(get_token)()}"},
-            # proxies=prox,
-            # auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         )
         result = await sync_to_async(response.json)()
         logging.info(f"ПРИШЛИ ПОКУПАТЬ И ПРИШЕЛ ОТВЕТ:{result}")
