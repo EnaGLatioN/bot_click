@@ -1,6 +1,7 @@
 import base64
 import asyncio
 import aiohttp
+import requests
 import argparse
 import datetime
 import urllib.parse
@@ -48,7 +49,6 @@ async def send_telegram_message(message):
 
 
 async def authenticate_and_get_token(auth_url, payload, proxy=None):
-    import requests
     logging.info(f"Получаем токен --:{auth_url, payload, proxy}")
     try:
         if proxy is None:
@@ -70,13 +70,12 @@ async def authenticate_and_get_token(auth_url, payload, proxy=None):
 
 
 async def send_request(api_url, headers, proxy):
-    import requests
     logging.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
         auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth, timeout=2.0)
+        response = await sync_to_async(requests.get)(url=api_url, headers=headers, proxies=prox, auth=auth)
         return await sync_to_async(response.json)()
     except Exception as e:
         logging.info(f"HTTP error occurred: {e} - Proxy: {proxy}")
@@ -245,9 +244,7 @@ async def buy(id, proxy):
 
 
 async def main(args):
-    logging.info("АРГУМЕНТЫ СТАРТА БОТА")
-    logging.info(args)
-    logging.info(f"Прокси запущен в работу :{args.proxy}")
+    logging.info("АРГУМЕНТЫ СТАРТА БОТА",args)
     await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), float(args.rate),
                          int(args.order_filter), args.proxy, args.timer, args.email, args.password))
 
