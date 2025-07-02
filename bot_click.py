@@ -83,7 +83,7 @@ async def send_request(api_url, headers, proxy):
     return None
 
 
-async def take_tocken(proxy=None, email=None, password=None):
+async def take_tocken(proxy, email=None, password=None):
     auth_payload = AUTH_PAYLOAD
     if email == "skotradde@gmail.com":
         token = await authenticate_and_get_token(AUTH_URL, auth_payload)
@@ -92,16 +92,12 @@ async def take_tocken(proxy=None, email=None, password=None):
         else:
             await sync_to_async(update_token)(token)
         return {"Authorization": f"Bearer {token}"}
-    if (email and password) is not None:
+    if (email is not None) and (email != "skotradde@gmail.com"):
         auth_payload = {
             "email": email,
             "password": password
         }
-    if proxy is None:
-        token = await authenticate_and_get_token(AUTH_URL, auth_payload)
-    else:
         token = await authenticate_and_get_token(AUTH_URL, auth_payload, proxy)
-    if token:
         logging.info(f"Authorization: f'Bearer {token}'")
         return {"Authorization": f"Bearer {token}"}
     logging.info("Failed to authenticate.")
@@ -111,6 +107,9 @@ async def take_tocken(proxy=None, email=None, password=None):
 
 async def take_orders(api_url, headers, curse, order_filter, proxy, timer, email, password):
     logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
+    headers = await take_tocken(proxy, email, password)
+    if not headers:
+        logging.info("No token. Exiting.")
     while True:
         try:
             response = await send_request(api_url, headers, proxy)
@@ -248,12 +247,8 @@ async def buy(id, proxy):
 async def main(args):
     logging.info("АРГУМЕНТЫ СТАРТА БОТА")
     logging.info(args)
-    headers = await take_tocken(args.proxy, args.email, args.password)
-    if not headers:
-        logging.info("No token. Exiting.")
-        return
     logging.info(f"Прокси запущен в работу :{args.proxy}")
-    await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), headers, float(args.rate),
+    await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), float(args.rate),
                          int(args.order_filter), args.proxy, args.timer, args.email, args.password))
 
 
