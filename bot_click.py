@@ -4,11 +4,10 @@ import asyncio
 import aiohttp
 import requests
 import argparse
-import datetime
 
 import urllib.parse
 from asgiref.sync import sync_to_async
-from db.init_db import insert_lot, get_active_records, insert_tocken, update_token, get_token
+from db.init_db import insert_lot, get_active_records
 from decouple import config
 from requests.auth import HTTPProxyAuth
 
@@ -34,7 +33,7 @@ ACCEPT_URL = config("ACCEPT_URL", cast=str)
 TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
 
-async def send_telegram_message(message):
+async def send_telegram_message(message, mail):
     async with aiohttp.ClientSession() as session:
         chat = await sync_to_async(get_active_records)()
         payload = {
@@ -49,10 +48,9 @@ async def send_telegram_message(message):
 async def authenticate_and_get_token(auth_url, payload, proxy):
     logging.info(f"Получаем токен --:{auth_url, payload, proxy}")
     try:
-        auth = HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
-        response = await sync_to_async(requests.post)(url=auth_url,json=payload, proxies=prox, auth=auth)
+        response = await sync_to_async(requests.post)(url=auth_url,json=payload, proxies=prox, auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS")))
         data = await sync_to_async(response.json)()
         return data.get('accessToken')
     except aiohttp.ClientError as e:
@@ -76,13 +74,6 @@ async def send_request(api_url, headers, proxy):
 
 
 async def take_tocken(proxy, email, password):
-    if email == "skotradde@gmail.com":
-        token = await authenticate_and_get_token(AUTH_URL, AUTH_PAYLOAD, proxy)
-        if not await sync_to_async(get_token)():
-            await sync_to_async(insert_tocken)(token)
-        else:
-            await sync_to_async(update_token)(token)
-        return {"Authorization": f"Bearer {token}"}
     auth_payload = {
         "email": email,
         "password": password
@@ -91,9 +82,8 @@ async def take_tocken(proxy, email, password):
     return {"Authorization": f"Bearer {token}"}
 
 
-async def take_orders(api_url, curse, order_filter, proxy, email, password):
-    headers = await take_tocken(proxy, email, password)
-    logging.info(f"Начал брать ордера --:{api_url, headers, curse, order_filter, proxy}")
+async def take_orders(api_url, curse, proxy, email, password, headers):
+    logging.info(f"Начал брать ордера --:{api_url, headers, curse, proxy}")
     if not headers:
         logging.info("No token. Exiting.")
     while True:
@@ -103,28 +93,14 @@ async def take_orders(api_url, curse, order_filter, proxy, email, password):
             if response.get('statusCode', None) == 401:
                 headers = await take_tocken(proxy, email, password)
                 logging.info(f"NNNNNNNNNNNNNNNNNEEEEEEEEEEEEEWWWWWWWWWWWWW TTTTTTTTTTOOOOOOOKKKKKKEEENNNN: {headers}")
-            count = 0
             for res in response.get("items", []):
                 if  await sync_to_async(res.get)("status") == "trader_payment":
-                    count += 1
                     continue
-                if res.get("currencyRate") <= curse and count <= order_filter:
-                    await buy(res.get("id"), proxy)
+                if res.get("currencyRate") <= curse :
+                    await buy(res.get("id"), proxy, email, headers)
         except Exception as e:
             logging.info(f"Error while processing orders: {e}")
             continue
-
-
-async def to_time(to_time):
-    logging.info(f"to_time: {to_time}")
-    api_time = datetime.datetime.fromisoformat(to_time)
-    logging.info(f"api_time: {api_time}")
-    tzinfo = datetime.timezone(datetime.timedelta(hours=5.0))
-    now = datetime.datetime.now(tzinfo)
-    threshold_time = api_time + datetime.timedelta(hours=5)
-    logging.info(f"threshold_time: {threshold_time}")
-    logging.info(f"TTTTTIIIIIIIIIIIIIIMEEEEEEEEEEEEEEEEE: {(threshold_time - now).total_seconds() / 60}")
-    return (threshold_time - now).total_seconds() / 60
 
 
 def take_rates(rates_url, headers):
@@ -170,53 +146,22 @@ async def create_encoded_json(filter_int):
     return MONEY_FILTER_OT_DO.format(urllib.parse.quote(base64.b64encode(json_string.encode('utf-8')).decode('utf-8')))
 
 
-def get_user_choice(rates):
-    print(f"Выберите нужный курс: {rates}")
-    while True:
-        try:
-            choice = int(input("Введите номер курса: "))
-            if choice in rates:
-                return choice
-            else:
-                print("Неверный номер. Пожалуйста, выберите номер из списка.")
-        except ValueError:
-            print("Пожалуйста, введите корректный номер.")
 
-
-def get_filters():
-    while True:
-        try:
-            choice = str(input("Введите фильтры:"))
-            if choice:
-                return choice
-            return None
-        except ValueError:
-           print("Пожалуйста, введите корректный номер.")
-
-
-def fix_filter(selected_filter):
-    if selected_filter is not None:
-        max_amount = None
-        try:
-            min_amount, max_amount = map(int, selected_filter.split('-'))
-        except:
-            min_amount = int(selected_filter)
-        return min_amount, max_amount
-    return None
-
-
-async def buy(id, proxy):
+async def buy(id, proxy, mail, headers):
     try:
+        prox = await sync_to_async(dict)()
+        prox['http'] = proxy
         response = await sync_to_async(requests.post)(
             url=ACCEPT_URL.format(id),
-            headers={"Authorization": f"Bearer {await sync_to_async(get_token)()}"},
-        )
+            headers=headers,
+            proxies=prox,
+            auth=HTTPProxyAuth(config("PR_USER"), config("PR_PASS"))
+            )
         result = await sync_to_async(response.json)()
-        logging.info(f"ПРИШЛИ ПОКУПАТЬ И ПРИШЕЛ ОТВЕТ:{result}")
         if result.get("status") == 'trader_payment':
-            logging.info(f"Куплен лот с айди:{id}")
-            await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}")
+            await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}", mail)
             await sync_to_async(insert_lot)(lot_id=id, status=True)
+            logging.info(f"Куплен лот с айди:{id}")
         else:
             logging.info(f"Не купили лот с айди:{id}")
             await sync_to_async(insert_lot)(lot_id=id, status=False)
@@ -226,8 +171,8 @@ async def buy(id, proxy):
 
 async def main(args):
     logging.info(f"АРГУМЕНТЫ СТАРТА БОТА--{args}")
-    await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), float(args.rate),
-                         int(args.order_filter), args.proxy, args.email, args.password))
+    headers = await take_tocken(args.proxy, args.email, args.password)
+    await asyncio.gather(take_orders(await create_encoded_json(args.min_summ), float(args.rate), args.proxy, args.email, args.password, headers))
 
 
 if __name__ == "__main__":
@@ -235,8 +180,6 @@ if __name__ == "__main__":
     parser.add_argument("--rate", type=float, help="Введите значение курса.")
     parser.add_argument("--min_summ", type=str, help="Введите значение минимальной суммы.")
     parser.add_argument("--processes", type=int, help="Введите значение процессов.")
-    parser.add_argument("--order_filter", type=int, help="Максимум заявок.")
-    parser.add_argument("--timer", type=int, help="Таймер заявки.")
     parser.add_argument("--proxy", type=str, help="Таймер заявки.")
     parser.add_argument("--email", type=str, help="email")
     parser.add_argument("--password", type=str, help="password")

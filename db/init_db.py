@@ -128,48 +128,6 @@ def insert_process(connection, process_data):
         if connection is not None:
             connection.close()
 
-def insert_tocken(tocken):
-    connection = create_connection()
-    cursor = None
-    try:
-        cursor = connection.cursor()
-        cursor.execute(
-            """
-            INSERT INTO tocken (tocken) VALUES (%s)
-            """,
-            (tocken,)
-        )
-        connection.commit()
-        logging.info(f"1 запись успешно добавлена: {tocken}.")
-    except Exception as error:
-        logging.error(f"Ошибка при вставке данных: {error}")
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if connection is not None:
-            connection.close()
-
-def update_token(new_token=None):
-    connection = create_connection()
-    cursor = None
-    try:
-        cursor = connection.cursor()
-        cursor.execute(
-            """
-            UPDATE tocken SET tocken = %s
-            """
-            , (new_token,)
-        )
-        connection.commit()
-        logging.info(f"Токен успешно обновлен: {new_token}.")
-    except Exception as error:
-        logging.error(f"Ошибка при обновлении токена: {error}")
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if connection is not None:
-            connection.close()
-
 
 def get_token():
     connection = create_connection()
@@ -190,6 +148,7 @@ def get_token():
     except Exception as error:
         logging.error(f"Ошибка при получении токена: {error}")
     return token
+
 
 def get_active_processes(connection):
     try:
