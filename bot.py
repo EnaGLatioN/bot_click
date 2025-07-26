@@ -372,7 +372,6 @@ def callback_inline(call: CallbackQuery):
 def start_bot(call: CallbackQuery):
     processes = int(call.data.replace("processes-ready-", ""))
     update_positions(connection=create_connection(), num_proc=processes)
-    #active = get_active_records(connection=create_connection())
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.row(
     ).row(
@@ -381,8 +380,7 @@ def start_bot(call: CallbackQuery):
             callback_data=f"proc-start-{processes}"
         ),
     )
-    print("S"*100)
-    print(processes)
+
     bot.send_message(
         chat_id=call.from_user.id,
         text=f"Если выше все верно, то жми ↓",
@@ -396,7 +394,6 @@ def start_bot(call: CallbackQuery):
     keyboard = telebot.types.InlineKeyboardMarkup()
     record = {}
     records_to_insert = []
-    print("D"*100)
     try:
         if len(get_active_records(create_connection())) == 1:
             record = get_active_records(create_connection())[0]

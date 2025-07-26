@@ -12,6 +12,11 @@ from decouple import config
 from requests.auth import HTTPProxyAuth
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
     "email": config("MAIL", cast=str),
@@ -58,7 +63,6 @@ async def authenticate_and_get_token(auth_url, payload, proxy):
 
 
 async def send_request(api_url, headers, proxy):
-    logging.info(f"Отправляем запрос  --:{api_url, headers, proxy}")
     try:
         prox = await sync_to_async(dict)()
         prox['http'] = proxy
