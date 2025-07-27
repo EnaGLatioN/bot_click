@@ -12,11 +12,6 @@ from decouple import config
 from requests.auth import HTTPProxyAuth
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
 AUTH_URL = config("AUTH_URL", cast=str)
 AUTH_PAYLOAD = {
     "email": config("MAIL", cast=str),
@@ -38,7 +33,7 @@ ACCEPT_URL = config("ACCEPT_URL", cast=str)
 TELEGRAM_BOT_TOKEN = config("TELE_TOCKEN", cast=str)
 
 
-async def send_telegram_message(message, mail):
+async def send_telegram_message(message):
     async with aiohttp.ClientSession() as session:
         chat = await sync_to_async(get_active_records)()
         payload = {
@@ -163,7 +158,7 @@ async def buy(id, proxy, mail, headers):
             )
         result = await sync_to_async(response.json)()
         if result.get("status") == 'trader_payment':
-            await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id}", mail)
+            await send_telegram_message(f"КУПЛЕН ЛОТ С АЙДИ -- {id} -- {mail}")
             await sync_to_async(insert_lot)(lot_id=id, status=True)
             logging.info(f"Куплен лот с айди:{id}")
         else:
